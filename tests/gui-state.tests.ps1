@@ -31,7 +31,7 @@ Describe "GUI state helpers" {
         $result = Test-NetworkDiagGuiState -State $state -Limits $limits
         $result.Errors.Count | Should BeGreaterThan 0
         ($result.Errors -join " | ") | Should Match "invalid host/IP|not a valid host/IP"
-        ($result.Errors -join " | ") | Should Match "DNS name to test|DnsProbeName"
+        ($result.Errors -join " | ") | Should Match "DNS name is required|DnsProbeName"
     }
 
     It "emits enabled optional probe parameters into cli map" {

@@ -7,7 +7,7 @@ function Save-NetworkDiagGuiDraftState {
     if (-not $state) { return }
     try {
         $path = Get-NetworkDiagGuiDraftStatePath
-        [System.IO.File]::WriteAllText($path, ($state | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+        Write-NetworkDiagGuiStateDocument -Path $path -State $state
     } catch {
         Set-NetworkDiagGuiStatus -Text ("Warning: Could not save draft state: " + $_.Exception.Message)
     }
@@ -17,7 +17,7 @@ function Restore-NetworkDiagGuiDraftStateIfAvailable {
     try {
         $path = Get-NetworkDiagGuiDraftStatePath
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
-        $loaded = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        $loaded = Read-NetworkDiagGuiStateDocument -Path $path
         if (-not $loaded) { return }
         $result = [System.Windows.MessageBox]::Show(
             "A previous GUI draft state was found. Restore it?",
@@ -35,6 +35,23 @@ function Restore-NetworkDiagGuiDraftStateIfAvailable {
     } catch {
         Set-NetworkDiagGuiStatus -Text ("Warning: Draft state restore failed: " + $_.Exception.Message)
     }
+}
+
+function Set-NetworkDiagGuiGoalSelection {
+    param([Parameter(Mandatory = $true)][string]$GoalId)
+    $controls = $script:App.Ui.Controls
+    if (-not $script:App.Config.GoalProfiles.ContainsKey($GoalId)) { return }
+    $profile = Apply-NetworkDiagGuiGoalPreset -GoalId $GoalId -Controls $controls -GoalProfiles $script:App.Config.GoalProfiles
+    if ($controls.ContainsKey("CurrentGoalText")) {
+        $adminRec = if ([bool]$profile.AdminRecommended) { "Admin recommended" } else { "Admin optional" }
+        $controls.CurrentGoalText.Text = "Goal: $($profile.Name) - $($profile.Notes) ($adminRec)"
+    }
+    if ($GoalId -eq "custom" -and $controls.ContainsKey("MainTabs")) {
+        $controls.MainTabs.SelectedIndex = 4
+    }
+    Update-NetworkDiagDependentControls
+    Invoke-NetworkDiagGuiValidation
+    Save-NetworkDiagGuiDraftState
 }
 
 function Show-NetworkDiagGuiOptionHelp {
@@ -64,9 +81,9 @@ function Set-NetworkDiagGuiExperienceMode {
     }
     if ($controls.ContainsKey("QuickHelpText")) {
         if ($isBeginner) {
-            $controls.QuickHelpText.Text = "Beginner mode: keep defaults and use Run (Standard). Use Run Full Capabilities (Admin) for deeper checks."
+            $controls.QuickHelpText.Text = "Beginner mode: choose a goal, review run summary, then click Run basic test. Use Run full diagnostic as administrator for deeper checks."
         } else {
-            $controls.QuickHelpText.Text = "Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy PowerShell command."
+            $controls.QuickHelpText.Text = "Shortcuts: F5 run basic test, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy PowerShell command."
         }
     }
 }
@@ -96,6 +113,7 @@ function Register-NetworkDiagGuiEvents {
     Register-NetworkDiagGuiOptionHelpBindings
     Set-NetworkDiagGuiExperienceMode
     Show-NetworkDiagGuiOptionHelp -ControlName "UserExperienceMode"
+    Set-NetworkDiagGuiGoalSelection -GoalId "quick"
     $controls.BurstOnFault.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipDnsProbe.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipIspEvidencePacket.Add_Click({ Update-NetworkDiagDependentControls })
@@ -123,6 +141,16 @@ function Register-NetworkDiagGuiEvents {
         Set-NetworkDiagGuiRunState -State "Idle" -Message "Preset applied: $selected"
     })
 
+    if ($controls.ContainsKey("GoalQuick")) { $controls.GoalQuick.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "quick" }) }
+    if ($controls.ContainsKey("GoalWifi")) { $controls.GoalWifi.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "wifi" }) }
+    if ($controls.ContainsKey("GoalDns")) { $controls.GoalDns.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "dns" }) }
+    if ($controls.ContainsKey("GoalIsp")) { $controls.GoalIsp.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "isp" }) }
+    if ($controls.ContainsKey("GoalVpn")) { $controls.GoalVpn.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "vpn" }) }
+    if ($controls.ContainsKey("GoalCustom")) { $controls.GoalCustom.Add_Click({ Set-NetworkDiagGuiGoalSelection -GoalId "custom" }) }
+    if ($controls.ContainsKey("FixUseDefaultDns")) { $controls.FixUseDefaultDns.Add_Click({ Invoke-NetworkDiagGuiValidationFix -Action "SetDnsDefault" }) }
+    if ($controls.ContainsKey("FixDisableDns")) { $controls.FixDisableDns.Add_Click({ Invoke-NetworkDiagGuiValidationFix -Action "DisableDnsCheck" }) }
+    if ($controls.ContainsKey("FixAutoTiming")) { $controls.FixAutoTiming.Add_Click({ Invoke-NetworkDiagGuiValidationFix -Action "AutoFixBurstInterval" }) }
+
     $controls.SaveProfile.Add_Click({
         $state = Get-NetworkDiagGuiStateSnapshot
         if (-not $state) {
@@ -133,7 +161,7 @@ function Register-NetworkDiagGuiEvents {
         $dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
         $dialog.FileName = "networkdiag_profile.json"
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            [System.IO.File]::WriteAllText($dialog.FileName, ($state | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+            Write-NetworkDiagGuiStateDocument -Path $dialog.FileName -State $state
             Set-NetworkDiagGuiRunState -State "Idle" -Message "Profile saved: $($dialog.FileName)"
         }
     })
@@ -143,8 +171,7 @@ function Register-NetworkDiagGuiEvents {
         $dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             try {
-                $loaded = Get-Content -LiteralPath $dialog.FileName -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-                $merged = Merge-NetworkDiagGuiState -Overrides $loaded
+                $merged = Read-NetworkDiagGuiStateDocument -Path $dialog.FileName
                 Set-NetworkDiagGuiControlState -Controls $controls -State $merged
                 Update-NetworkDiagDependentControls
                 Invoke-NetworkDiagGuiValidation
@@ -157,6 +184,21 @@ function Register-NetworkDiagGuiEvents {
 
     $controls.RunNormal.Add_Click({ Start-NetworkDiagGuiRun })
     $controls.RunAdmin.Add_Click({ Start-NetworkDiagGuiRun -PreferAdmin })
+    if ($controls.ContainsKey("PreviewCliCommand") -and $null -ne $controls.PreviewCliCommand) {
+        $controls.PreviewCliCommand.Add_Click({
+            try {
+                $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+                $state.OutputFolder = "<output-folder>"
+                $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+                [System.Windows.MessageBox]::Show($cmd, "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+            } catch {
+                [System.Windows.MessageBox]::Show("Failed to preview command: $($_.Exception.Message)", "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+            }
+        })
+    }
+    if ($controls.ContainsKey("RestartAsAdmin") -and $null -ne $controls.RestartAsAdmin) {
+        $controls.RestartAsAdmin.Add_Click({ Invoke-NetworkDiagGuiRestartAsAdministrator })
+    }
     $controls.StopRun.Add_Click({ Stop-NetworkDiagGuiRun })
     $controls.ClearLiveLog.Add_Click({ $controls.LiveLog.Clear() })
     $controls.LiveLogFilter.Add_TextChanged({
@@ -189,6 +231,23 @@ function Register-NetworkDiagGuiEvents {
         [System.Windows.Clipboard]::SetText($paths)
         Set-NetworkDiagGuiStatus -Text "Artifact paths copied to clipboard."
     })
+    if ($controls.ContainsKey("CopyRunSummaryButton") -and $null -ne $controls.CopyRunSummaryButton) {
+        $controls.CopyRunSummaryButton.Add_Click({
+            $text = Build-NetworkDiagGuiHumanSummary
+            [System.Windows.Clipboard]::SetText($text)
+            Set-NetworkDiagGuiStatus -Text "Run summary copied to clipboard."
+        })
+    }
+    if ($controls.ContainsKey("SupportBundleButton") -and $null -ne $controls.SupportBundleButton) {
+        $controls.SupportBundleButton.Add_Click({
+            $res = Invoke-NetworkDiagGuiCreateSupportBundle
+            if ($res.Ok) {
+                [System.Windows.MessageBox]::Show("Support bundle created:`n$($res.Path)", "Support bundle", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+            } else {
+                [System.Windows.MessageBox]::Show("Support bundle unavailable: $($res.Message)", "Support bundle", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+            }
+        })
+    }
     $controls.OpenLaunchConfig.Add_Click({
         $path = [string]$script:App.Run.CurrentLaunchConfigPath
         if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -233,8 +292,7 @@ function Register-NetworkDiagGuiEvents {
             return
         }
         try {
-            $loaded = Get-Content -LiteralPath $selected.StateConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-            $merged = Merge-NetworkDiagGuiState -Overrides $loaded
+            $merged = Read-NetworkDiagGuiStateDocument -Path $selected.StateConfigPath
             Set-NetworkDiagGuiControlState -Controls $controls -State $merged
             Update-NetworkDiagDependentControls
             Invoke-NetworkDiagGuiValidation
@@ -270,6 +328,33 @@ function Register-NetworkDiagGuiEvents {
             Update-NetworkDiagGuiIncidentInsightsFromRunFolder -RunFolder $selected.ScriptRunFolder
         }
     })
+    if ($controls.ContainsKey("CompareRunA")) {
+        $controls.CompareRunA.Add_Click({
+            $selected = Get-NetworkDiagGuiSelectedRecentRun
+            if (-not $selected) { return }
+            $script:App.History.CompareA = $selected
+            Set-NetworkDiagGuiStatus -Text "Comparison A set: $($selected.StartedAt)"
+        })
+    }
+    if ($controls.ContainsKey("CompareRunB")) {
+        $controls.CompareRunB.Add_Click({
+            $selected = Get-NetworkDiagGuiSelectedRecentRun
+            if (-not $selected) { return }
+            $script:App.History.CompareB = $selected
+            Set-NetworkDiagGuiStatus -Text "Comparison B set: $($selected.StartedAt)"
+        })
+    }
+    if ($controls.ContainsKey("CompareRuns")) {
+        $controls.CompareRuns.Add_Click({
+            $a = $script:App.History.CompareA
+            $b = $script:App.History.CompareB
+            if (-not $a -or -not $b) { return }
+            $txt = Build-NetworkDiagGuiRunComparisonText -RunA $a -RunB $b
+            if ($controls.ContainsKey("RunComparisonText")) {
+                $controls.RunComparisonText.Text = $txt
+            }
+        })
+    }
 
     foreach ($name in @(
         "DurationMinutes","IntervalSeconds","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",

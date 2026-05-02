@@ -16,11 +16,11 @@ function Start-NetworkDiagGuiApp {
     $defaultState = New-NetworkDiagGuiDefaultState
     if (-not $defaultState.OutputRoot) { $defaultState.OutputRoot = Get-NetworkDiagGuiDefaultOutputRoot }
     $presetMap = Get-NetworkDiagGuiPresets -BaseState $defaultState
+    $goalProfiles = Get-NetworkDiagGuiGoalProfiles -BaseState $defaultState
 
     if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
         try {
-            $loaded = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-            $defaultState = Merge-NetworkDiagGuiState -Overrides $loaded
+            $defaultState = Read-NetworkDiagGuiStateDocument -Path $ConfigPath
         } catch {
             Write-Warning ("Failed to load GUI config from '" + $ConfigPath + "': " + $_.Exception.Message)
         }
@@ -34,16 +34,26 @@ function Start-NetworkDiagGuiApp {
 
     $isAdmin = Test-NetworkDiagGuiIsAdmin
     $controls.AdminBanner.Text = if ($isAdmin) {
-        "You are running as Administrator. Full diagnostics and capture paths are available."
+        "Administrator mode: full diagnostics available."
     } else {
-        "You are running without Administrator rights. The app still works, but some deep diagnostics are limited. Use 'Run Full Capabilities (Admin)' for the most complete results."
+        "Standard mode: some diagnostics may be limited. Use 'Run full diagnostic as administrator' for complete capability."
     }
     $controls.RunabilityHint.Text = "Easy path: use this window and click Run. Power users can also run the same test directly from PowerShell."
+    if ($controls.ContainsKey("RestartAsAdmin") -and $null -ne $controls.RestartAsAdmin) {
+        $controls.RestartAsAdmin.Visibility = [System.Windows.Visibility]::Collapsed
+    }
     foreach ($cbName in @("SkipMultiNicCrossCheck","SkipConfigAudit","SkipCableHints","RequireEthernet","IspEvidenceZip")) {
         $controls[$cbName].ToolTip = ($limits.AdminCaveats -join " ")
     }
     $tooltips = @{
         UserExperienceMode = "Beginner keeps the screen focused on core settings. Expert shows every advanced control."
+        GoalQuick = "Use a short 2-5 minute baseline check."
+        GoalWifi = "Use a profile tuned for Wi-Fi/router instability patterns."
+        GoalDns = "Use a DNS-focused profile."
+        GoalIsp = "Use a longer external monitoring profile for ISP issues."
+        GoalVpn = "Use route/MTU-focused settings for VPN path problems."
+        GoalCustom = "Keep advanced custom controls in charge."
+        CurrentGoalText = "Shows the currently selected diagnostic goal."
         DurationMinutes = "How long to run the test, in minutes."
         IntervalSeconds = "How often each network check cycle runs."
         MonitoringMode = "Auto chooses defaults by run length; ShortRun and LongRun force a specific behavior profile."
@@ -103,8 +113,10 @@ function Start-NetworkDiagGuiApp {
         RecentRunsList = "Recent launcher runs in this session."
         OpenSelectedRun = "Open selected run folder in Explorer."
         OpenSelectedLogs = "Open selected logs folder in Explorer."
-        RunNormal = "Start now with current permissions."
-        RunAdmin = "Restart with Administrator rights (UAC prompt) for full diagnostics."
+        RunNormal = "Run basic diagnostic test with current permissions."
+        RunAdmin = "Run full diagnostic as Administrator (UAC prompt if needed)."
+        PreviewCliCommand = "Preview the PowerShell command generated from current settings."
+        RestartAsAdmin = "Save current settings and reopen this launcher with Administrator rights (UAC). Does not start a run automatically."
         StopRun = "Stop the currently running diagnostic process."
         OpenCurrentRun = "Open the active run folder."
         OpenCurrentLogs = "Open the active logs folder."
@@ -118,11 +130,21 @@ function Start-NetworkDiagGuiApp {
         RuntimeRulesText = "Script-side runtime constraints shown for reference."
         OutputFallbackText = "Output folder fallback order used by the script."
         AtGlanceSummary = "Compact summary of key run settings and mode."
+        SupportBundleButton = "Create a ZIP support bundle from the latest run artifacts."
+        CopyRunSummaryButton = "Copy a human-readable summary to clipboard."
+        CompareRunA = "Set selected run as comparison A."
+        CompareRunB = "Set selected run as comparison B."
+        CompareRuns = "Compare run A and run B."
+        RunComparisonText = "Comparison output across selected runs."
+        SetupValidationStatus = "Current run-readiness status."
     }
     foreach ($name in $tooltips.Keys) {
         if ($controls.ContainsKey($name) -and $null -ne $controls[$name]) {
             $controls[$name].ToolTip = [string]$tooltips[$name]
         }
+    }
+    if ($controls.ContainsKey("SupportBundleButton")) {
+        $controls.SupportBundleButton.ToolTip = "Available after at least one run has produced artifacts."
     }
 
     $script:App = @{
@@ -133,6 +155,7 @@ function Start-NetworkDiagGuiApp {
         Config = @{
             Limits = $limits
             PresetMap = $presetMap
+            GoalProfiles = $goalProfiles
             OptionHelpMap = $tooltips
         }
         Context = @{
@@ -155,6 +178,10 @@ function Start-NetworkDiagGuiApp {
         }
         Health = @{}
         Hooks = New-NetworkDiagGuiHooks
+        History = @{
+            CompareA = $null
+            CompareB = $null
+        }
     }
 
     Register-NetworkDiagGuiEvents
@@ -163,10 +190,16 @@ function Start-NetworkDiagGuiApp {
 
     $controls.RuntimeRulesText.Text = (($limits.RuntimeRules | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
     $controls.OutputFallbackText.Text = (($limits.OutputFallback | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
-    $controls.QuickHelpText.Text = "Beginner mode: keep defaults and click Run (Standard). Use Run Full Capabilities (Admin) for deeper checks."
+    $controls.QuickHelpText.Text = "Beginner mode: choose a goal, review summary, then click Run basic test. Use Run full diagnostic as administrator for deeper checks."
     $controls.UserExperienceMode.SelectedIndex = 0
     $controls.OptionHelpText.Text = "Tip: hover over any setting or tab into it to see a plain-language explanation."
     $controls.AtGlanceSummary.Text = "View=Beginner | Preset=default | Ready"
+    if ($controls.ContainsKey("CurrentGoalText")) {
+        $controls.CurrentGoalText.Text = "Goal: Quick internet sanity check"
+    }
+    if ($controls.ContainsKey("RunComparisonText")) {
+        $controls.RunComparisonText.Text = "Select two runs and click Compare selected runs."
+    }
 
     Invoke-NetworkDiagGuiValidation
     Reset-NetworkDiagGuiLiveHealth

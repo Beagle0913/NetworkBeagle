@@ -22,14 +22,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test-gu
 
 ## What it covers
 
-- Exposes all entry script parameters in UI controls.
+- Presents a goal-first workflow with tabs: `Setup`, `Live Run`, `Results`, `History`, and `Advanced`.
+- `Setup` is beginner-first (goal cards + run summary + primary run actions).
+- `Advanced` retains the full parameter surface for expert/operator control.
 - Validates the same key constraints as the script:
   - `ExternalIcmpHosts` must contain 2..6 entries.
   - `ExternalIcmpLabels` must be empty or match host count.
   - `TcpProbeHosts` must be empty or contain exactly 2 entries.
   - With `BurstOnFault`, `BurstIntervalSeconds` must be lower than `IntervalSeconds`.
   - Numeric controls enforce the same `ValidateRange` limits.
-- Shows non-admin caveats and offers **Run Full Capabilities (Admin)** for UAC relaunch.
+- Shows non-admin caveats and offers **Run full diagnostic as administrator** (UAC relaunch then auto-start a run).
 
 ## Modular layout
 
@@ -56,10 +58,10 @@ UI markup lives in:
 
 ## Elevation behavior
 
-- **Run (Standard)** starts the run without elevation.
-- **Run Full Capabilities (Admin)**:
+- **Run basic test** starts the run without elevation.
+- **Run full diagnostic as administrator**:
   - If already elevated, runs immediately.
-  - If not elevated, relaunches the GUI with `RunAs` and restores selected settings from a temporary JSON file.
+  - If not elevated, relaunches the GUI with `RunAs` and restores selected settings from a temporary JSON file, then auto-starts the diagnostic run (`-AutoRunElevated`).
   - If UAC is canceled, the current GUI stays open and reports the cancellation.
 
 ## Folder structure
@@ -75,6 +77,8 @@ Launcher-side files in `logs`:
 - `stdout.log` (captured script stdout)
 - `stderr.log` (captured script stderr)
 - `launch-config.json` (parameter snapshot used to launch)
+- `RUN_README.txt` in launcher root with quick navigation pointers
+- `latest-run.json` pointer under `gui-launcher-runs` for latest launcher run discovery
 
 The main script receives `-OutputFolder <...>\script-output-root` and then creates its own per-run output below that root (including report/csv/detail outputs).
 

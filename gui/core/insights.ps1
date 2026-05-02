@@ -154,3 +154,69 @@ function Build-NetworkDiagGuiQuickAnalysis {
         return "Quick analysis failed: $($_.Exception.Message)`r`nSummary path: $summaryPath"
     }
 }
+
+function Build-NetworkDiagGuiHumanSummary {
+    $runFolder = [string]$script:App.Run.CurrentRunFolder
+    $logsFolder = [string]$script:App.Run.CurrentLogsFolder
+    $status = if ($script:App.Run.State) { [string]$script:App.Run.State } else { "Idle" }
+    $h = $script:App.Health
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.Add("NetworkBeagle run summary")
+    $lines.Add("Date: " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
+    $lines.Add("State: $status")
+    $lines.Add("Privilege: " + $(if ([bool]$script:App.Context.IsAdminGui) { "Administrator" } else { "Standard user" }))
+    $lines.Add("Verdict: " + [string]$h.LastVerdict)
+    $lines.Add("Gateway: " + [string]$h.GatewayStatus)
+    $lines.Add("DNS: " + [string]$h.DnsStatus)
+    $lines.Add("External: " + [string]$h.ExternalStatus)
+    $lines.Add("TCP/TLS: " + [string]$h.TcpTlsStatus)
+    $lines.Add("Run folder: $runFolder")
+    $lines.Add("Logs folder: $logsFolder")
+    return ($lines -join [Environment]::NewLine)
+}
+
+function Build-NetworkDiagGuiRunComparisonText {
+    param(
+        [hashtable]$RunA,
+        [hashtable]$RunB
+    )
+    if (-not $RunA -or -not $RunB) {
+        return "Select both comparison runs first."
+    }
+    $fmt = {
+        param($run)
+        $path = if ($run.ScriptRunFolder) { [string]$run.ScriptRunFolder } else { [string]$run.LauncherRunRoot }
+        return "$($run.StartedAt) (exit=$(if ($null -eq $run.ExitCode) { 'running' } else { $run.ExitCode }))  $path"
+    }
+    $aSummaryPath = Get-NetworkDiagGuiSummaryPath -RunFolder ([string]$RunA.ScriptRunFolder)
+    $bSummaryPath = Get-NetworkDiagGuiSummaryPath -RunFolder ([string]$RunB.ScriptRunFolder)
+    if (-not $aSummaryPath -or -not $bSummaryPath) {
+        return "Comparison needs summary JSON for both runs.`nA: $(& $fmt $RunA)`nB: $(& $fmt $RunB)"
+    }
+    try {
+        $a = Get-Content -LiteralPath $aSummaryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $b = Get-Content -LiteralPath $bSummaryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $lines = [System.Collections.Generic.List[string]]::new()
+        $lines.Add("Run comparison")
+        $lines.Add("A: $(& $fmt $RunA)")
+        $lines.Add("B: $(& $fmt $RunB)")
+        $lines.Add("")
+        $lines.Add("Gateway failures: $([int]$a.pcLink.gatewayFailCycles) -> $([int]$b.pcLink.gatewayFailCycles)")
+        $lines.Add("DNS failures: $([int]$a.pcLink.dnsFailCycles) -> $([int]$b.pcLink.dnsFailCycles)")
+        $lines.Add("External ISP faults (%): $([int]$a.cycles.pctIspFault) -> $([int]$b.cycles.pctIspFault)")
+        $lines.Add("Local faults (%): $([int]$a.cycles.pctLocalFault) -> $([int]$b.cycles.pctLocalFault)")
+        $lines.Add("Anomalies (%): $([int]$a.cycles.pctAnomaly) -> $([int]$b.cycles.pctAnomaly)")
+        if ([int]$b.cycles.pctIspFault -lt [int]$a.cycles.pctIspFault -and [int]$b.cycles.pctLocalFault -lt [int]$a.cycles.pctLocalFault) {
+            $lines.Add("Interpretation: B improved across both ISP and local indicators.")
+        } elseif ([int]$b.cycles.pctLocalFault -lt [int]$a.cycles.pctLocalFault) {
+            $lines.Add("Interpretation: B improved primarily on local-path indicators.")
+        } elseif ([int]$b.cycles.pctIspFault -lt [int]$a.cycles.pctIspFault) {
+            $lines.Add("Interpretation: B improved primarily on external/ISP indicators.")
+        } else {
+            $lines.Add("Interpretation: No clear improvement signal between selected runs.")
+        }
+        return ($lines -join [Environment]::NewLine)
+    } catch {
+        return "Comparison failed: $($_.Exception.Message)"
+    }
+}

@@ -16,6 +16,39 @@ function New-NetworkDiagGuiLauncherPaths {
     }
 }
 
+function Write-NetworkDiagGuiRunPointers {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Paths,
+        [Parameter(Mandatory = $true)][hashtable]$State
+    )
+    $readmePath = Join-Path $Paths.LauncherRunRoot "RUN_README.txt"
+    $lines = @(
+        "NetworkBeagle launcher run"
+        "Created: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+        "Run folder: $($Paths.LauncherRunRoot)"
+        "Report folder: $($Paths.ScriptOutputRoot)"
+        "Logs folder: $($Paths.LogsFolder)"
+        ""
+        "Open this first:"
+        " - logs\\launcher.log"
+        " - logs\\stdout.log"
+        " - logs\\stderr.log"
+        " - script-output-root\\runs\\run_<timestamp>"
+    )
+    [System.IO.File]::WriteAllText($readmePath, ($lines -join [Environment]::NewLine), (New-Object System.Text.UTF8Encoding $false))
+
+    try {
+        $latestPath = Join-Path (Join-Path $State.OutputRoot "gui-launcher-runs") "latest-run.json"
+        $latestObj = [ordered]@{
+            updatedAt = (Get-Date).ToString("o")
+            launcherRunRoot = $Paths.LauncherRunRoot
+            logsFolder = $Paths.LogsFolder
+            reportFolder = $Paths.ScriptOutputRoot
+        }
+        [System.IO.File]::WriteAllText($latestPath, ($latestObj | ConvertTo-Json -Depth 6), (New-Object System.Text.UTF8Encoding $false))
+    } catch { }
+}
+
 function Write-NetworkDiagGuiLogLine {
     param([string]$Path, [string]$Text)
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $Text"
@@ -38,7 +71,11 @@ function Get-NetworkDiagGuiRecentRunsManifestPath {
 function Save-NetworkDiagGuiRecentRuns {
     try {
         $path = Get-NetworkDiagGuiRecentRunsManifestPath
-        $payload = @($script:App.Run.RecentRuns)
+        $payload = [ordered]@{
+            schemaVersion = 2
+            savedAt = (Get-Date).ToUniversalTime().ToString("o")
+            runs = @($script:App.Run.RecentRuns)
+        }
         [System.IO.File]::WriteAllText($path, ($payload | ConvertTo-Json -Depth 8), (New-Object System.Text.UTF8Encoding $false))
     } catch {
         Set-NetworkDiagGuiStatus -Text ("Warning: Could not persist recent runs history: " + $_.Exception.Message)
@@ -49,9 +86,16 @@ function Load-NetworkDiagGuiRecentRuns {
     try {
         $path = Get-NetworkDiagGuiRecentRunsManifestPath
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
-        $payload = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-        if ($payload -isnot [System.Collections.IEnumerable]) { return }
-        foreach ($item in @($payload)) {
+        $payloadRaw = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $payload = ConvertTo-NetworkDiagHashtable -InputObject $payloadRaw
+        $runs = @()
+        if ($payload.ContainsKey("schemaVersion")) {
+            $runs = @($payload.runs)
+        } else {
+            $runs = @($payload)
+        }
+        if ($runs -isnot [System.Collections.IEnumerable]) { return }
+        foreach ($item in @($runs)) {
             if (-not $item) { continue }
             $script:App.Run.RecentRuns.Add(@{
                 StartedAt = [string]$item.StartedAt
@@ -73,13 +117,15 @@ function Load-NetworkDiagGuiRecentRuns {
 
 function Get-NetworkDiagGuiRunTransitionMap {
     return @{
-        Idle = @("Idle", "Validating", "Starting")
-        Validating = @("Idle", "Starting", "Failed")
-        Starting = @("Idle", "Running", "Failed")
-        Running = @("Stopping", "Completed", "Failed")
-        Stopping = @("Completed", "Failed")
-        Completed = @("Idle", "Validating", "Starting")
-        Failed = @("Idle", "Validating", "Starting")
+        Idle = @("Idle", "Validating", "PreparingRun", "LaunchingElevated")
+        Validating = @("Idle", "PreparingRun", "LaunchingElevated", "Failed", "Cancelled")
+        PreparingRun = @("Running", "Failed", "Cancelled")
+        LaunchingElevated = @("Idle", "Cancelled", "Failed")
+        Running = @("Stopping", "Completed", "Failed", "Cancelled")
+        Stopping = @("Completed", "Failed", "Cancelled")
+        Completed = @("Idle", "Validating", "PreparingRun", "LaunchingElevated")
+        Failed = @("Idle", "Validating", "PreparingRun", "LaunchingElevated")
+        Cancelled = @("Idle", "Validating", "PreparingRun", "LaunchingElevated")
     }
 }
 
@@ -94,7 +140,14 @@ function New-NetworkDiagGuiRunnerScriptContent {
 `$scriptPath = "$($ScriptPath.Replace('"','`"'))"
 `$jsonPath = "$($JsonPath.Replace('"','`"'))"
 `$json = Get-Content -LiteralPath `$jsonPath -Raw -Encoding UTF8
-`$params = ConvertFrom-Json -InputObject `$json -AsHashtable
+`$paramsRaw = ConvertFrom-Json -InputObject `$json
+if (`$paramsRaw -is [System.Collections.IDictionary]) {
+    `$params = @{}
+    foreach (`$k in `$paramsRaw.Keys) { `$params[[string]`$k] = `$paramsRaw[`$k] }
+} else {
+    `$params = @{}
+    foreach (`$p in `$paramsRaw.PSObject.Properties) { `$params[[string]`$p.Name] = `$p.Value }
+}
 & `$scriptPath @params
 "@
 }
@@ -146,10 +199,100 @@ function Set-NetworkDiagGuiStatus {
 
 function Update-NetworkDiagGuiActionButtons {
     $controls = $script:App.Ui.Controls
-    $isRunning = ($script:App.Run.CurrentProcess -and -not $script:App.Run.CurrentProcess.HasExited)
-    $controls.RunNormal.IsEnabled = (-not $isRunning) -and (-not $script:App.Run.ValidationHasErrors)
-    $controls.RunAdmin.IsEnabled = (-not $isRunning) -and (-not $script:App.Run.ValidationHasErrors)
-    $controls.StopRun.IsEnabled = $isRunning
+    $state = if ($script:App.Run.State) { [string]$script:App.Run.State } else { "Idle" }
+    $canRun = ($state -in @("Idle", "Completed", "Failed", "Cancelled")) -and (-not $script:App.Run.ValidationHasErrors)
+    $canStop = ($state -eq "Running")
+    $controls.RunNormal.IsEnabled = $canRun
+    $controls.RunAdmin.IsEnabled = $canRun
+    $controls.StopRun.IsEnabled = $canStop
+    if ($controls.ContainsKey("RestartAsAdmin") -and $null -ne $controls.RestartAsAdmin) {
+        $controls.RestartAsAdmin.IsEnabled = $canRun -and (-not $script:App.Context.IsAdminGui)
+    }
+    if ($controls.ContainsKey("SupportBundleButton") -and $null -ne $controls.SupportBundleButton) {
+        $controls.SupportBundleButton.IsEnabled = $script:App.Run.CurrentRunFolder -and (Test-Path -LiteralPath $script:App.Run.CurrentRunFolder -PathType Container)
+    }
+}
+
+function Start-NetworkDiagGuiAdminProcessRelaunch {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$State,
+        [switch]$AutoRunElevated
+    )
+    $cfgPath = Save-NetworkDiagGuiConfig -State $State
+    $argPieces = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$($script:App.Context.CommandPath)`"",
+        "-ElevatedLaunch",
+        "-ConfigPath", "`"$cfgPath`""
+    )
+    if ($AutoRunElevated) { $argPieces += "-AutoRunElevated" }
+    $argStr = $argPieces -join " "
+    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $argStr | Out-Null
+}
+
+function Invoke-NetworkDiagGuiRestartAsAdministrator {
+    if ($script:App.Context.IsAdminGui) {
+        [System.Windows.MessageBox]::Show(
+            "This window is already running as Administrator.",
+            "Restart as Administrator",
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Information
+        ) | Out-Null
+        return
+    }
+    if ($script:App.Run.CurrentProcess -and -not $script:App.Run.CurrentProcess.HasExited) {
+        [System.Windows.MessageBox]::Show(
+            "Stop the active run before restarting the launcher as Administrator.",
+            "Run in progress",
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Warning
+        ) | Out-Null
+        return
+    }
+
+    Set-NetworkDiagGuiRunState -State "Validating" -Message "Checking inputs for elevated restart..."
+    $state = $null
+    try {
+        $state = Get-NetworkDiagGuiStateFromControls -Controls $script:App.Ui.Controls -Limits $script:App.Config.Limits
+    } catch {
+        [System.Windows.MessageBox]::Show($_.Exception.Message, "Invalid input", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        Set-NetworkDiagGuiRunState -State "Idle" -Message "Validation failed before elevated restart."
+        return
+    }
+
+    $validation = Test-NetworkDiagGuiState -State $state -Limits $script:App.Config.Limits
+    if ($validation.Errors.Count -gt 0) {
+        [System.Windows.MessageBox]::Show(($validation.Errors -join [Environment]::NewLine), "Validation failed", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        Set-NetworkDiagGuiRunState -State "Idle" -Message "Validation failed."
+        return
+    }
+    if ($validation.Warnings.Count -gt 0) {
+        Set-NetworkDiagGuiStatus ($validation.Warnings -join " | ")
+        if ($state.DurationMinutes -ge 1440 -and $state.DetailLog) {
+            $ans = [System.Windows.MessageBox]::Show(
+                "This run is 24h+ with DetailLog enabled. Logs may become very large. Continue?",
+                "Long run confirmation",
+                [System.Windows.MessageBoxButton]::YesNo,
+                [System.Windows.MessageBoxImage]::Warning
+            )
+            if ($ans -ne [System.Windows.MessageBoxResult]::Yes) {
+                Set-NetworkDiagGuiRunState -State "Idle" -Message "Elevated restart canceled by user."
+                return
+            }
+        }
+    } else {
+        Set-NetworkDiagGuiStatus "Validation passed."
+    }
+
+    try {
+        Start-NetworkDiagGuiAdminProcessRelaunch -State $state
+        Set-NetworkDiagGuiStatus "Requested elevated restart. Approve UAC to open a new Administrator window with these settings."
+        Set-NetworkDiagGuiRunState -State "Idle" -Message "Waiting for elevated relaunch."
+    } catch {
+        Set-NetworkDiagGuiStatus "Elevated restart was canceled or failed: $($_.Exception.Message)"
+        Set-NetworkDiagGuiRunState -State "Idle" -Message "Elevated restart canceled or failed."
+    }
 }
 
 function Set-NetworkDiagGuiRunState {
@@ -178,12 +321,54 @@ function Set-NetworkDiagGuiRunState {
     while ($script:App.Run.TransitionHistory.Count -gt 50) {
         $script:App.Run.TransitionHistory.RemoveAt(0)
     }
-    $status = if ($Message) { "${State}: $Message" } else { $State }
+    $status = if ($Message) { "${requestedState}: $Message" } else { $requestedState }
     if ($requestedState -ne $State) {
         $status = "${requestedState}: $Message"
     }
     Set-NetworkDiagGuiStatus -Text $status
     Update-NetworkDiagGuiActionButtons
+}
+
+function Invoke-NetworkDiagGuiCreateSupportBundle {
+    $runFolder = [string]$script:App.Run.CurrentRunFolder
+    $logsFolder = [string]$script:App.Run.CurrentLogsFolder
+    if (-not $runFolder -or -not (Test-Path -LiteralPath $runFolder -PathType Container)) {
+        return @{ Ok = $false; Message = "No completed run folder is available yet." }
+    }
+    try {
+        $bundleRoot = Join-Path $runFolder "support_bundle"
+        if (-not (Test-Path -LiteralPath $bundleRoot -PathType Container)) {
+            [void](New-Item -ItemType Directory -Path $bundleRoot -Force)
+        }
+        $summaryTxt = Join-Path $bundleRoot "summary.txt"
+        $summaryJson = Join-Path $bundleRoot "summary.json"
+        [System.IO.File]::WriteAllText($summaryTxt, (Build-NetworkDiagGuiHumanSummary), (New-Object System.Text.UTF8Encoding $false))
+        $summaryObj = [ordered]@{
+            createdAt = (Get-Date).ToString("o")
+            runFolder = $runFolder
+            logsFolder = $logsFolder
+            launcherState = [string]$script:App.Run.State
+            health = $script:App.Health
+        }
+        [System.IO.File]::WriteAllText($summaryJson, ($summaryObj | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+
+        foreach ($candidate in @($script:App.Run.CurrentLaunchConfigPath, $script:App.Run.CurrentGuiStatePath)) {
+            if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+                Copy-Item -LiteralPath $candidate -Destination (Join-Path $bundleRoot (Split-Path -Leaf $candidate)) -Force
+            }
+        }
+        if ($logsFolder -and (Test-Path -LiteralPath $logsFolder -PathType Container)) {
+            Copy-Item -LiteralPath (Join-Path $logsFolder "*") -Destination $bundleRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Copy-Item -LiteralPath (Join-Path $runFolder "*") -Destination $bundleRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+        $zipPath = Join-Path $runFolder ("support_bundle_" + (Get-Date -Format "yyyy-MM-dd_HH-mm-ss") + ".zip")
+        if (Test-Path -LiteralPath $zipPath -PathType Leaf) { Remove-Item -LiteralPath $zipPath -Force }
+        Compress-Archive -Path (Join-Path $bundleRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal -Force
+        return @{ Ok = $true; Path = $zipPath }
+    } catch {
+        return @{ Ok = $false; Message = $_.Exception.Message }
+    }
 }
 
 function Refresh-NetworkDiagGuiRecentRuns {
@@ -299,17 +484,9 @@ function Start-NetworkDiagGuiRun {
 
     if ($PreferAdmin -and -not $script:App.Context.IsAdminGui) {
         try {
-            $cfg = Save-NetworkDiagGuiConfig -State $state
-            $args = @(
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", "`"$script:App.Context.CommandPath`"",
-                "-ElevatedLaunch",
-                "-AutoRunElevated",
-                "-ConfigPath", "`"$cfg`""
-            ) -join " "
-            Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $args | Out-Null
+            Start-NetworkDiagGuiAdminProcessRelaunch -State $state -AutoRunElevated
             Set-NetworkDiagGuiStatus "Requested admin relaunch. Approve UAC to continue."
+            Set-NetworkDiagGuiRunState -State "LaunchingElevated" -Message "Waiting for elevated relaunch."
             Set-NetworkDiagGuiRunState -State "Idle" -Message "Waiting for elevated relaunch."
             return
         } catch {
@@ -326,7 +503,7 @@ function Start-NetworkDiagGuiRun {
         return
     }
 
-    Set-NetworkDiagGuiRunState -State "Starting" -Message "Preparing run folders and launch command..."
+    Set-NetworkDiagGuiRunState -State "PreparingRun" -Message "Preparing run folders and launch command..."
 
     $paths = $null
     try {
@@ -337,6 +514,7 @@ function Start-NetworkDiagGuiRun {
         return
     }
     $state.OutputFolder = $paths.ScriptOutputRoot
+    Write-NetworkDiagGuiRunPointers -Paths $paths -State $state
     $script:App.Run.CurrentRunFolder = $paths.LauncherRunRoot
     $script:App.Run.CurrentLogsFolder = $paths.LogsFolder
 
@@ -351,7 +529,7 @@ function Start-NetworkDiagGuiRun {
 
     $paramMap = ConvertTo-NetworkDiagGuiParamMap -State $state
     [System.IO.File]::WriteAllText($paramsJsonPath, ($paramMap | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
-    [System.IO.File]::WriteAllText($stateJsonPath, ($state | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+    Write-NetworkDiagGuiStateDocument -Path $stateJsonPath -State $state
     $runnerScript = New-NetworkDiagGuiRunnerScriptContent -ScriptPath $scriptPath -JsonPath $paramsJsonPath
     [System.IO.File]::WriteAllText($runnerPath, $runnerScript, (New-Object System.Text.UTF8Encoding $false))
 
@@ -417,7 +595,7 @@ function Start-NetworkDiagGuiRun {
         Set-NetworkDiagGuiQuickAnalysisText -Text (Build-NetworkDiagGuiQuickAnalysis -RunFolder $analysisRunFolder -ExitCode $code)
         Update-NetworkDiagGuiIncidentInsightsFromRunFolder -RunFolder $analysisRunFolder
         if ($script:App.Run.StopRequested) {
-            Set-NetworkDiagGuiRunState -State "Completed" -Message "Run stopped by user. Exit code: $code"
+            Set-NetworkDiagGuiRunState -State "Cancelled" -Message "Run stopped by user. Exit code: $code"
         } elseif ($code -eq 0) {
             Set-NetworkDiagGuiRunState -State "Completed" -Message "Run finished. Exit code: 0"
         } else {
@@ -426,6 +604,9 @@ function Start-NetworkDiagGuiRun {
         $script:App.Run.StopRequested = $false
         Set-NetworkDiagGuiStatus "Run finished. Exit code: $code. Logs: $script:App.Run.CurrentLogsFolder"
         Append-NetworkDiagGuiLiveLog "Run complete. Exit code: $code"
+        if ($script:App.Ui.Controls.ContainsKey("MainTabs")) {
+            $script:App.Ui.Window.Dispatcher.Invoke([Action]{ $script:App.Ui.Controls.MainTabs.SelectedIndex = 2 })
+        }
         Invoke-NetworkDiagGuiHook -Hooks $script:App.Hooks -EventName "RunFinished" -Payload @{ ExitCode = $code; RunFolder = $analysisRunFolder }
     }
 
@@ -455,5 +636,8 @@ function Start-NetworkDiagGuiRun {
         ExitCode = $null
     }
     Set-NetworkDiagGuiRunState -State "Running" -Message "Run started."
+    if ($script:App.Ui.Controls.ContainsKey("MainTabs")) {
+        $script:App.Ui.Window.Dispatcher.Invoke([Action]{ $script:App.Ui.Controls.MainTabs.SelectedIndex = 1 })
+    }
     Invoke-NetworkDiagGuiHook -Hooks $script:App.Hooks -EventName "RunStarted" -Payload @{ LauncherRunRoot = $paths.LauncherRunRoot }
 }

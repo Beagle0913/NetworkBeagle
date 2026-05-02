@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:AutomationProperties="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="Network Stability Test Launcher"
-        Height="940" Width="1360"
+        Height="980" Width="1380"
         MinHeight="780" MinWidth="1120"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -20,390 +20,438 @@
         </Style>
     </Window.Resources>
     <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="8"/>
-            <RowDefinition Height="2*"/>
-        </Grid.RowDefinitions>
-
-        <Border Grid.Row="0" Background="#FFF2CC" Padding="8" CornerRadius="4" Margin="0,0,0,8">
-            <StackPanel>
-                <TextBlock Name="AdminBanner" TextWrapping="Wrap" AutomationProperties.Name="Admin and capability banner"/>
-                <TextBlock Name="RunabilityHint" Margin="0,4,0,0" Foreground="DimGray" TextWrapping="Wrap" Text="Runability: Advanced users can launch via PowerShell; less technical users can use one-click GUI launcher scripts."/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="1" Background="#F5F5F5" Padding="6,4" CornerRadius="3" Margin="0,0,0,8" BorderBrush="#D0D0D0" BorderThickness="1">
-            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                <Button Name="RunNormal" Content="Run (Standard)" Width="160" Margin="0,0,8,0" AutomationProperties.Name="Run test with current permissions"/>
-                <Button Name="RunAdmin" Content="Run Full Capabilities (Admin)" Width="240" Margin="0,0,8,0" AutomationProperties.Name="Run test with administrator rights"/>
-                <Button Name="StopRun" Content="Stop Active Run" Width="140" Margin="0,0,8,0" AutomationProperties.Name="Stop the active network diagnostic run"/>
-                <Button Name="OpenCurrentRun" Content="Open Current Run Folder" Width="180" Margin="0,0,8,0"/>
-                <Button Name="OpenCurrentLogs" Content="Open Current Logs Folder" Width="180"/>
-            </WrapPanel>
-        </Border>
-
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel>
-                <GroupBox Name="ExperienceGroup" Header="Experience Mode + Explanations" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Experience mode" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox Name="UserExperienceMode" Grid.Row="0" Grid.Column="1" Margin="4">
-                            <ComboBoxItem Content="Beginner (guided)"/>
-                            <ComboBoxItem Content="Expert (at-a-glance)"/>
-                        </ComboBox>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="What this option does" Style="{StaticResource FieldLabel}" VerticalAlignment="Top"/>
-                        <TextBlock Name="OptionHelpText" Grid.Row="1" Grid.Column="1" Margin="4" TextWrapping="Wrap" Foreground="DimGray"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="At-a-glance config" Style="{StaticResource FieldLabel}" VerticalAlignment="Top"/>
-                        <TextBlock Name="AtGlanceSummary" Grid.Row="2" Grid.Column="1" Margin="4" TextWrapping="Wrap" Foreground="DarkSlateBlue"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="RunBasicsGroup" Header="Run Basics (Recommended)" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Run duration (minutes)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="DurationMinutes" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Run duration in minutes"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Check every (seconds)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="IntervalSeconds" Grid.Row="0" Grid.Column="3" Style="{StaticResource FieldInput}" AutomationProperties.Name="Main cycle interval in seconds"/>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="Monitoring profile" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox Name="MonitoringMode" Grid.Row="0" Grid.Column="5" Margin="4" AutomationProperties.Name="Monitoring mode">
-                            <ComboBoxItem Content="Auto"/>
-                            <ComboBoxItem Content="ShortRun"/>
-                            <ComboBoxItem Content="LongRun"/>
-                        </ComboBox>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Heartbeat minutes" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="HeartbeatMinutes" Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="Snapshot minutes" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="SnapshotMinutes" Grid.Row="1" Grid.Column="3" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="Event lookback minutes" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="EventLogLookbackMinutes" Grid.Row="1" Grid.Column="5" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="IP version" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox Name="ProbeAddressFamily" Grid.Row="2" Grid.Column="1" Margin="4">
-                            <ComboBoxItem Content="IPv4"/>
-                            <ComboBoxItem Content="IPv6"/>
-                        </ComboBox>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="RuntimeRulesGroup" Header="Runtime Rules and Output Paths" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="These rules are generated from launcher limits and mirror script-side behavior." Foreground="DimGray" Margin="4"/>
-                        <Expander Grid.Row="1" Header="Show runtime constraints and output fallback order" IsExpanded="False" Margin="4">
-                            <StackPanel Margin="8,4,8,8">
-                                <TextBlock Text="Runtime rules" FontWeight="SemiBold"/>
-                                <TextBlock Name="RuntimeRulesText" Margin="0,2,0,6" TextWrapping="Wrap" />
-                                <TextBlock Text="Output fallback" FontWeight="SemiBold"/>
-                                <TextBlock Name="OutputFallbackText" Margin="0,2,0,0" TextWrapping="Wrap" />
+        <TabControl Name="MainTabs">
+            <TabItem Name="SetupTab" Header="Setup">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="8">
+                        <Border Background="#FFF2CC" Padding="8" CornerRadius="4" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Name="AdminBanner" TextWrapping="Wrap" AutomationProperties.Name="Admin and capability banner"/>
+                                <TextBlock Name="RunabilityHint" Margin="0,4,0,0" Foreground="DimGray" TextWrapping="Wrap"/>
+                                <Button Name="RestartAsAdmin" Content="Relaunch with administrator rights" Margin="0,8,0,0" HorizontalAlignment="Left" Padding="12,6" MinWidth="260"/>
                             </StackPanel>
-                        </Expander>
-                    </Grid>
-                </GroupBox>
+                        </Border>
 
-                <GroupBox Name="OutputListsGroup" Header="Where to Save + Targets" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="100"/>
-                        </Grid.ColumnDefinitions>
+                        <GroupBox Header="Choose Diagnostic Goal" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Button Name="GoalQuick" Grid.Row="0" Grid.Column="0" Margin="4" Content="Quick internet sanity check"/>
+                                <Button Name="GoalWifi" Grid.Row="0" Grid.Column="1" Margin="4" Content="Wi-Fi / router instability"/>
+                                <Button Name="GoalDns" Grid.Row="0" Grid.Column="2" Margin="4" Content="DNS problems"/>
+                                <Button Name="GoalIsp" Grid.Row="1" Grid.Column="0" Margin="4" Content="ISP / packet loss investigation"/>
+                                <Button Name="GoalVpn" Grid.Row="1" Grid.Column="1" Margin="4" Content="VPN / MTU / routing issue"/>
+                                <Button Name="GoalCustom" Grid.Row="1" Grid.Column="2" Margin="4" Content="Custom expert run"/>
+                                <TextBlock Name="CurrentGoalText" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="4" TextWrapping="Wrap" Foreground="DarkSlateBlue" Text="Goal: Quick internet sanity check"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Name="RunBasicsGroup" Header="Run Basics (Recommended)" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Run duration (minutes)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="DurationMinutes" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Check every (seconds)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="IntervalSeconds" Grid.Row="0" Grid.Column="3" Style="{StaticResource FieldInput}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="4" Text="Monitoring profile" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox Name="MonitoringMode" Grid.Row="0" Grid.Column="5" Margin="4">
+                                    <ComboBoxItem Content="Auto"/>
+                                    <ComboBoxItem Content="ShortRun"/>
+                                    <ComboBoxItem Content="LongRun"/>
+                                </ComboBox>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Heartbeat minutes" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="HeartbeatMinutes" Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Snapshot minutes" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="SnapshotMinutes" Grid.Row="1" Grid.Column="3" Style="{StaticResource FieldInput}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="4" Text="Event lookback minutes" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="EventLogLookbackMinutes" Grid.Row="1" Grid.Column="5" Style="{StaticResource FieldInput}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="IP version" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox Name="ProbeAddressFamily" Grid.Row="2" Grid.Column="1" Margin="4">
+                                    <ComboBoxItem Content="IPv4"/>
+                                    <ComboBoxItem Content="IPv6"/>
+                                </ComboBox>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Name="OutputListsGroup" Header="Output and targets" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="100"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="120"/>
+                                    <RowDefinition Height="120"/>
+                                    <RowDefinition Height="120"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Save reports to" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="OutputRoot" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Root folder for saved reports and logs"/>
+                                <Button Name="BrowseOutputRoot" Grid.Row="0" Grid.Column="2" Margin="4" Content="Browse"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Internet targets (2..6)" VerticalAlignment="Top"/>
+                                <TextBox Name="ExternalIcmpHosts" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Target labels (optional)" VerticalAlignment="Top"/>
+                                <TextBox Name="ExternalIcmpLabels" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="TCP targets (optional; exactly 2)" VerticalAlignment="Top"/>
+                                <TextBox Name="TcpProbeHosts" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="DNS name to test" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Name="DnsProbeName" Grid.Row="4" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Name="SetupRunSummaryCard" Header="Ready to run" Margin="0,0,0,8">
+                            <StackPanel Margin="8">
+                                <TextBlock Name="AtGlanceSummary" Foreground="DarkSlateBlue" TextWrapping="Wrap"/>
+                                <TextBlock Name="OptionHelpText" Margin="0,6,0,0" Foreground="DimGray" TextWrapping="Wrap"/>
+                                <TextBlock Name="SetupValidationStatus" Margin="0,6,0,0" Foreground="DarkOliveGreen" TextWrapping="Wrap"/>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <Button Name="FixUseDefaultDns" Content="Use default DNS" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                    <Button Name="FixDisableDns" Content="Disable DNS check" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                    <Button Name="FixAutoTiming" Content="Auto-fix timing" Visibility="Collapsed"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <Border Background="#F5F5F5" Padding="6,4" CornerRadius="3" Margin="0,0,0,8" BorderBrush="#D0D0D0" BorderThickness="1">
+                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                <Button Name="RunNormal" Content="Run basic test" Width="160" Margin="0,0,8,0"/>
+                                <Button Name="RunAdmin" Content="Run full diagnostic as administrator" Width="260" Margin="0,0,8,0"/>
+                                <Button Name="StopRun" Content="Stop" Width="120" Margin="0,0,8,0"/>
+                                <Button Name="PreviewCliCommand" Content="Preview command" Width="140" Margin="0,0,8,0"/>
+                                <Button Name="ExportCliCommand" Content="Copy command" Width="120"/>
+                            </WrapPanel>
+                        </Border>
+
+                        <TextBlock Name="ValidationText" Foreground="DarkOliveGreen" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                        <TextBlock Name="StatusText" Foreground="DarkSlateBlue" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                        <TextBlock Name="QuickHelpText" Margin="0,0,0,8" TextWrapping="Wrap" Foreground="DimGray"/>
+
+                        <!-- Hidden but still available for legacy mode toggles -->
+                        <GroupBox Name="ExperienceGroup" Header="Experience Mode + Explanations" Margin="0,0,0,8" Visibility="Collapsed">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Experience mode" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox Name="UserExperienceMode" Grid.Row="0" Grid.Column="1" Margin="4">
+                                    <ComboBoxItem Content="Beginner (guided)"/>
+                                    <ComboBoxItem Content="Expert (at-a-glance)"/>
+                                </ComboBox>
+                            </Grid>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="LiveRunTab" Header="Live Run">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Name="ParserStatusText" Foreground="SlateGray" Margin="0,0,0,8" TextWrapping="Wrap" Text="Live analysis: waiting for run output..."/>
+                    <GroupBox Name="HealthGroup" Header="Current run health" Grid.Row="1" Margin="0,0,0,8">
+                        <Grid Margin="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="3*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Name="HealthRunVerdict" Margin="4" Text="Verdict: n/a"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Name="HealthDns" Margin="4" Text="DNS: n/a"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Name="HealthGateway" Margin="4" Text="Gateway: n/a"/>
+                            <TextBlock Grid.Row="0" Grid.Column="3" Name="HealthExternal" Margin="4" Text="External: n/a"/>
+                            <TextBlock Grid.Row="0" Grid.Column="4" Name="HealthTcp" Margin="4" Text="TCP/TLS: n/a"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Name="HealthCycles" Margin="4" Text="Cycles: 0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Name="HealthLastUpdate" Margin="4" Text="Last update: n/a"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Name="HealthSeverity" Margin="4" Text="Severity: n/a"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Name="HealthTrend" Margin="4" Text="Trend(20): DNS=n/a GW=n/a EXT=n/a TCP=n/a"/>
+                        </Grid>
+                    </GroupBox>
+                    <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="120"/>
-                            <RowDefinition Height="120"/>
-                            <RowDefinition Height="120"/>
+                            <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="140"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Save reports to" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="OutputRoot" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Root folder for saved reports and logs"/>
-                        <Button Name="BrowseOutputRoot" Grid.Row="0" Grid.Column="2" Margin="4" Content="Browse"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Internet targets (2..6)" VerticalAlignment="Top"/>
-                        <TextBox Name="ExternalIcmpHosts" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Target labels (optional)" VerticalAlignment="Top"/>
-                        <TextBox Name="ExternalIcmpLabels" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="TCP targets (optional; exactly 2)" VerticalAlignment="Top"/>
-                        <TextBox Name="TcpProbeHosts" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="DNS name to test" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="DnsProbeName" Grid.Row="4" Grid.Column="1" Style="{StaticResource FieldInput}"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="TimingGroup" Header="Timing + Burst + Routing" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="IcmpCountPerTarget"/>
-                        <TextBox Name="IcmpCountPerTarget" Grid.Row="0" Grid.Column="1" Margin="4"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="IcmpTimeoutSeconds"/>
-                        <TextBox Name="IcmpTimeoutSeconds" Grid.Row="0" Grid.Column="3" Margin="4"/>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="DnsTimeoutMs"/>
-                        <TextBox Name="DnsTimeoutMs" Grid.Row="0" Grid.Column="5" Margin="4"/>
-                        <CheckBox Name="BurstOnFault" Grid.Row="1" Grid.Column="0" Content="BurstOnFault" Margin="4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="BurstIntervalSeconds"/>
-                        <TextBox Name="BurstIntervalSeconds" Grid.Row="1" Grid.Column="3" Margin="4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="BurstCycles"/>
-                        <TextBox Name="BurstCycles" Grid.Row="1" Grid.Column="5" Margin="4"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="MaxBurstSeconds"/>
-                        <TextBox Name="MaxBurstSeconds" Grid.Row="2" Grid.Column="1" Margin="4"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="GwIcmpPolicyConfirmCycles"/>
-                        <TextBox Name="GwIcmpPolicyConfirmCycles" Grid.Row="2" Grid.Column="3" Margin="4"/>
-                        <TextBlock Grid.Row="2" Grid.Column="4" Text="RoutingRefreshIntervalCycles"/>
-                        <TextBox Name="RoutingRefreshIntervalCycles" Grid.Row="2" Grid.Column="5" Margin="4"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="FeatureSwitchesGroup" Header="Feature Switches" Margin="0,0,0,8">
-                    <WrapPanel Margin="8">
-                        <CheckBox Name="RequireEthernet" Content="RequireEthernet" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipTcpProbe" Content="SkipTcpProbe" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="DetailLog" Content="DetailLog" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="LegacyCsvShape" Content="LegacyCsvShape" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipDnsProbe" Content="SkipDnsProbe" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipGwIcmpPolicyAdaptation" Content="SkipGwIcmpPolicyAdaptation" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="PinExternalIcmpToResolvedIp" Content="PinExternalIcmpToResolvedIp" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipConfigAudit" Content="SkipConfigAudit" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipCableHints" Content="SkipCableHints" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipMultiNicCrossCheck" Content="SkipMultiNicCrossCheck" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipIspEvidencePacket" Content="SkipIspEvidencePacket" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="IspEvidenceZip" Content="IspEvidenceZip" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipWifiSignal" Content="SkipWifiSignal" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="EnableTlsProbe" Content="EnableTlsProbe" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SkipJsonSummary" Content="SkipJsonSummary" Style="{StaticResource FieldCheck}"/>
-                        <CheckBox Name="SelfTest" Content="SelfTest" Style="{StaticResource FieldCheck}"/>
-                    </WrapPanel>
-                </GroupBox>
-
-                <GroupBox Name="PathMtuGroup" Header="Optional Path MTU Target" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="PathMtuProbeTarget"/>
-                        <TextBox Name="PathMtuProbeTarget" Grid.Column="1" Margin="4"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="UdpGroup" Header="UDP Continuous Probe" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <CheckBox Name="EnableUdpProbe" Grid.Row="0" Grid.Column="0" Content="EnableUdpProbe" Margin="4"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="UdpProbeTarget (host:port)"/>
-                        <TextBox Name="UdpProbeTarget" Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="3" Margin="4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="UdpProbeRateHz"/>
-                        <TextBox Name="UdpProbeRateHz" Grid.Row="1" Grid.Column="1" Margin="4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="UdpProbePayloadBytes"/>
-                        <TextBox Name="UdpProbePayloadBytes" Grid.Row="1" Grid.Column="3" Margin="4"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="LongTcpGroup" Header="Long-Lived TCP Session" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <CheckBox Name="EnableLongLivedTcp" Grid.Column="0" Content="EnableLongLivedTcp" Margin="4"/>
-                        <TextBlock Grid.Column="1" Text="LongLivedTcpTarget (host:port)" VerticalAlignment="Center" Margin="4,0"/>
-                        <TextBox Name="LongLivedTcpTarget" Grid.Column="2" Margin="4"/>
-                        <TextBlock Grid.Column="3" Text="ReconnectBackoffSeconds" VerticalAlignment="Center" Margin="4,0"/>
-                        <TextBox Name="LongLivedTcpReconnectBackoffSeconds" Grid.Column="3" HorizontalAlignment="Right" Width="80" Margin="4"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="ProbeCaptureGroup" Header="Per-probe Timestamps + Auto-capture" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <CheckBox Name="PerProbeTimestamps" Grid.Column="0" Content="PerProbeTimestamps" Margin="4"/>
-                        <CheckBox Name="AutoCaptureOnFault" Grid.Column="1" Content="AutoCaptureOnFault" Margin="4"/>
-                        <TextBlock Grid.Column="2" Text="Method" VerticalAlignment="Center"/>
-                        <ComboBox Name="AutoCaptureMethod" Grid.Column="3" Margin="4">
-                            <ComboBoxItem Content="pktmon"/>
-                            <ComboBoxItem Content="netshtrace"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="4" Text="Seconds" VerticalAlignment="Center"/>
-                        <TextBox Name="AutoCaptureSeconds" Grid.Column="5" Margin="4"/>
-                        <TextBlock Grid.Column="6" Text="Max" VerticalAlignment="Center"/>
-                        <TextBox Name="AutoCaptureMax" Grid.Column="7" Margin="4"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Name="ProfilesGroup" Header="Profiles + Recent Runs" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="120"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Built-in preset" VerticalAlignment="Center"/>
-                        <ComboBox Name="PresetSelector" Grid.Row="0" Grid.Column="1" Margin="4"/>
-                        <Button Name="ApplyPreset" Grid.Row="0" Grid.Column="2" Margin="4" Content="Apply preset"/>
-                        <Button Name="SaveProfile" Grid.Row="0" Grid.Column="3" Margin="4" Content="Save profile"/>
-                        <Button Name="LoadProfile" Grid.Row="0" Grid.Column="4" Margin="4" Content="Load profile"/>
-                        <Button Name="ReRunSelected" Grid.Row="0" Grid.Column="5" Margin="4" Content="Re-run selected"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Recent runs" VerticalAlignment="Top"/>
-                        <ListBox Name="RecentRunsList" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Margin="4"/>
-
-                        <TextBox Name="RecentRunsFilter" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Margin="4" ToolTip="Filter recent runs by path, date, or exit code."/>
-                        <Button Name="OpenSelectedRun" Grid.Row="2" Grid.Column="4" Margin="4" Content="Open selected run"/>
-                        <Button Name="OpenSelectedLogs" Grid.Row="2" Grid.Column="5" Margin="4" Content="Open selected logs"/>
-
-                        <WrapPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="5" Margin="4,6,4,0">
-                            <Button Name="ExportCliCommand" Content="Copy PowerShell Command" Margin="0,0,8,0"/>
-                            <Button Name="CopyArtifactPaths" Content="Copy Artifact Paths" Margin="0,0,8,0"/>
-                            <Button Name="OpenLaunchConfig" Content="Open launch-config.json" Margin="0,0,8,0"/>
-                            <Button Name="OpenGuiState" Content="Open gui-state.json"/>
+                        <GroupBox Name="IncidentGroup" Header="Recent events and incidents" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="120"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Name="IncidentReasonText" Grid.Row="0" Margin="4" Text="Top incident reasons: n/a"/>
+                                <ListBox Name="EpisodeTimelineList" Grid.Row="1" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
+                        <WrapPanel Grid.Row="2" Margin="0,6,0,4">
+                            <TextBlock Text="Raw output filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox Name="LiveLogFilter" Width="260" Margin="0,0,8,0"/>
+                            <CheckBox Name="LiveLogStderrOnly" Content="Show stderr only" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <Button Name="ClearLiveLog" Content="Clear log"/>
                         </WrapPanel>
+                        <TextBox Grid.Row="3" Name="LiveLog" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" AutomationProperties.Name="Live diagnostic log output"/>
                     </Grid>
-                </GroupBox>
+                </Grid>
+            </TabItem>
 
-                <TextBlock Name="StatusText" Foreground="DarkSlateBlue" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Run status text"/>
-                <TextBlock Name="ValidationText" Foreground="DarkOliveGreen" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Validation status text"/>
-                <TextBlock Name="ParserStatusText" Foreground="SlateGray" Margin="0,0,0,8" TextWrapping="Wrap" Text="Parser status: waiting for run output..." AutomationProperties.Name="Parser status summary"/>
+            <TabItem Name="ResultsTab" Header="Results">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <GroupBox Name="AnalysisGroup" Header="Run summary and interpretation" Margin="0,0,0,8">
+                        <TextBox Name="QuickAnalysis" Margin="8" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                    </GroupBox>
+                    <WrapPanel Grid.Row="1">
+                        <Button Name="CopyRunSummaryButton" Content="Copy summary" Margin="0,0,8,0" Width="130"/>
+                        <Button Name="OpenCurrentRun" Content="Open run folder" Margin="0,0,8,0" Width="140"/>
+                        <Button Name="OpenCurrentLogs" Content="Open logs folder" Margin="0,0,8,0" Width="140"/>
+                        <Button Name="CopyArtifactPaths" Content="Copy artifact paths" Margin="0,0,8,0" Width="140"/>
+                        <Button Name="OpenLaunchConfig" Content="Open launch-config.json" Margin="0,0,8,0"/>
+                        <Button Name="OpenGuiState" Content="Open gui-state.json" Margin="0,0,8,0"/>
+                        <Button Name="SupportBundleButton" Content="Create support bundle" Width="160"/>
+                    </WrapPanel>
+                </Grid>
+            </TabItem>
 
-                <GroupBox Name="HealthGroup" Header="Live Health Dashboard" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="3*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+            <TabItem Name="HistoryTab" Header="History">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="8">
+                        <GroupBox Name="ProfilesGroup" Header="Profiles + Recent Runs" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="120"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Built-in preset" VerticalAlignment="Center"/>
+                                <ComboBox Name="PresetSelector" Grid.Row="0" Grid.Column="1" Margin="4"/>
+                                <Button Name="ApplyPreset" Grid.Row="0" Grid.Column="2" Margin="4" Content="Apply preset"/>
+                                <Button Name="SaveProfile" Grid.Row="0" Grid.Column="3" Margin="4" Content="Save profile"/>
+                                <Button Name="LoadProfile" Grid.Row="0" Grid.Column="4" Margin="4" Content="Load profile"/>
+                                <Button Name="ReRunSelected" Grid.Row="0" Grid.Column="5" Margin="4" Content="Re-run selected"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Recent runs" VerticalAlignment="Top"/>
+                                <ListBox Name="RecentRunsList" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Margin="4"/>
+                                <TextBox Name="RecentRunsFilter" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Margin="4" ToolTip="Filter recent runs by path, date, or exit code."/>
+                                <Button Name="OpenSelectedRun" Grid.Row="2" Grid.Column="4" Margin="4" Content="Open selected run"/>
+                                <Button Name="OpenSelectedLogs" Grid.Row="2" Grid.Column="5" Margin="4" Content="Open selected logs"/>
+                                <WrapPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="5" Margin="4,6,4,0">
+                                    <Button Name="CompareRunA" Content="Set A" Margin="0,0,8,0" Width="90"/>
+                                    <Button Name="CompareRunB" Content="Set B" Margin="0,0,8,0" Width="90"/>
+                                    <Button Name="CompareRuns" Content="Compare selected runs" Margin="0,0,8,0" Width="160"/>
+                                </WrapPanel>
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Header="Run comparison" Margin="0,0,0,8">
+                            <TextBox Name="RunComparisonText" Margin="8" Height="160" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Text="Select two runs and click Compare selected runs."/>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Name="HealthRunVerdict" Margin="4" Text="Verdict: n/a"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Name="HealthDns" Margin="4" Text="DNS: n/a"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Name="HealthGateway" Margin="4" Text="Gateway: n/a"/>
-                        <TextBlock Grid.Row="0" Grid.Column="3" Name="HealthExternal" Margin="4" Text="External: n/a"/>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Name="HealthTcp" Margin="4" Text="TCP/TLS: n/a"/>
+            <TabItem Name="AdvancedTab" Header="Advanced">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="8">
+                        <GroupBox Name="RuntimeRulesGroup" Header="Safety limits and defaults" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="These rules are generated from launcher limits and mirror script-side behavior." Foreground="DimGray" Margin="4"/>
+                                <Expander Grid.Row="1" Header="Show runtime constraints and output fallback order" IsExpanded="False" Margin="4">
+                                    <StackPanel Margin="8,4,8,8">
+                                        <TextBlock Text="Runtime rules" FontWeight="SemiBold"/>
+                                        <TextBlock Name="RuntimeRulesText" Margin="0,2,0,6" TextWrapping="Wrap" />
+                                        <TextBlock Text="Output fallback" FontWeight="SemiBold"/>
+                                        <TextBlock Name="OutputFallbackText" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Expander>
+                            </Grid>
+                        </GroupBox>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Name="HealthCycles" Margin="4" Text="Cycles: 0"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Name="HealthLastUpdate" Margin="4" Text="Last update: n/a"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Name="HealthSeverity" Margin="4" Text="Severity: n/a"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Name="HealthTrend" Margin="4" Text="Trend(20): DNS=n/a GW=n/a EXT=n/a TCP=n/a"/>
-                    </Grid>
-                </GroupBox>
+                        <GroupBox Name="TimingGroup" Header="Timing + Burst + Routing" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="IcmpCountPerTarget"/>
+                                <TextBox Name="IcmpCountPerTarget" Grid.Row="0" Grid.Column="1" Margin="4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="IcmpTimeoutSeconds"/>
+                                <TextBox Name="IcmpTimeoutSeconds" Grid.Row="0" Grid.Column="3" Margin="4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="4" Text="DnsTimeoutMs"/>
+                                <TextBox Name="DnsTimeoutMs" Grid.Row="0" Grid.Column="5" Margin="4"/>
+                                <CheckBox Name="BurstOnFault" Grid.Row="1" Grid.Column="0" Content="BurstOnFault" Margin="4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="BurstIntervalSeconds"/>
+                                <TextBox Name="BurstIntervalSeconds" Grid.Row="1" Grid.Column="3" Margin="4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="4" Text="BurstCycles"/>
+                                <TextBox Name="BurstCycles" Grid.Row="1" Grid.Column="5" Margin="4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="MaxBurstSeconds"/>
+                                <TextBox Name="MaxBurstSeconds" Grid.Row="2" Grid.Column="1" Margin="4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="GwIcmpPolicyConfirmCycles"/>
+                                <TextBox Name="GwIcmpPolicyConfirmCycles" Grid.Row="2" Grid.Column="3" Margin="4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="4" Text="RoutingRefreshIntervalCycles"/>
+                                <TextBox Name="RoutingRefreshIntervalCycles" Grid.Row="2" Grid.Column="5" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
 
-                <GroupBox Name="AnalysisGroup" Header="Post-run Quick Analysis" Margin="0,0,0,8">
-                    <TextBox Name="QuickAnalysis"
-                             Margin="8"
-                             Height="130"
-                             AcceptsReturn="True"
-                             IsReadOnly="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"/>
-                </GroupBox>
+                        <GroupBox Name="FeatureSwitchesGroup" Header="Diagnostic modules" Margin="0,0,0,8">
+                            <WrapPanel Margin="8">
+                                <CheckBox Name="RequireEthernet" Content="RequireEthernet" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipTcpProbe" Content="SkipTcpProbe" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="DetailLog" Content="DetailLog" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="LegacyCsvShape" Content="LegacyCsvShape" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipDnsProbe" Content="SkipDnsProbe" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipGwIcmpPolicyAdaptation" Content="SkipGwIcmpPolicyAdaptation" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="PinExternalIcmpToResolvedIp" Content="PinExternalIcmpToResolvedIp" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipConfigAudit" Content="SkipConfigAudit" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipCableHints" Content="SkipCableHints" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipMultiNicCrossCheck" Content="SkipMultiNicCrossCheck" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipIspEvidencePacket" Content="SkipIspEvidencePacket" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="IspEvidenceZip" Content="IspEvidenceZip" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipWifiSignal" Content="SkipWifiSignal" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="EnableTlsProbe" Content="EnableTlsProbe" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SkipJsonSummary" Content="SkipJsonSummary" Style="{StaticResource FieldCheck}"/>
+                                <CheckBox Name="SelfTest" Content="SelfTest" Style="{StaticResource FieldCheck}"/>
+                            </WrapPanel>
+                        </GroupBox>
 
-                <GroupBox Name="IncidentGroup" Header="Incident / Episode Timeline" Margin="0,0,0,8">
-                    <Grid Margin="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="120"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Name="IncidentReasonText" Grid.Row="0" Margin="4" Text="Top incident reasons: n/a"/>
-                        <ListBox Name="EpisodeTimelineList" Grid.Row="1" Margin="4"/>
-                    </Grid>
-                </GroupBox>
+                        <GroupBox Name="PathMtuGroup" Header="Optional Path MTU Target" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="PathMtuProbeTarget"/>
+                                <TextBox Name="PathMtuProbeTarget" Grid.Column="1" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
 
-                <GroupBox Name="HelpGroup" Header="Quick Help" Margin="0,0,0,8">
-                    <TextBlock Name="QuickHelpText" Margin="8" TextWrapping="Wrap" Foreground="DimGray" Text="Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy PowerShell command."/>
-                </GroupBox>
-            </StackPanel>
-        </ScrollViewer>
+                        <GroupBox Name="UdpGroup" Header="UDP Continuous Probe" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <CheckBox Name="EnableUdpProbe" Grid.Row="0" Grid.Column="0" Content="EnableUdpProbe" Margin="4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="UdpProbeTarget (host:port)"/>
+                                <TextBox Name="UdpProbeTarget" Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="3" Margin="4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="UdpProbeRateHz"/>
+                                <TextBox Name="UdpProbeRateHz" Grid.Row="1" Grid.Column="1" Margin="4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="UdpProbePayloadBytes"/>
+                                <TextBox Name="UdpProbePayloadBytes" Grid.Row="1" Grid.Column="3" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
 
-        <GridSplitter Grid.Row="3" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Background="#D0D0D0"/>
+                        <GroupBox Name="LongTcpGroup" Header="Long-Lived TCP Session" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Name="EnableLongLivedTcp" Grid.Column="0" Content="EnableLongLivedTcp" Margin="4"/>
+                                <TextBlock Grid.Column="1" Text="LongLivedTcpTarget (host:port)" VerticalAlignment="Center" Margin="4,0"/>
+                                <TextBox Name="LongLivedTcpTarget" Grid.Column="2" Margin="4"/>
+                                <TextBlock Grid.Column="3" Text="ReconnectBackoffSeconds" VerticalAlignment="Center" Margin="4,0"/>
+                                <TextBox Name="LongLivedTcpReconnectBackoffSeconds" Grid.Column="3" HorizontalAlignment="Right" Width="80" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
 
-        <Grid Grid.Row="4">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <WrapPanel Grid.Row="0" Margin="0,0,0,4">
-                <TextBlock Text="Log filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                <TextBox Name="LiveLogFilter" Width="260" Margin="0,0,8,0" AutomationProperties.Name="Live log filter text"/>
-                <CheckBox Name="LiveLogStderrOnly" Content="Show stderr only" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                <Button Name="ClearLiveLog" Content="Clear Log"/>
-            </WrapPanel>
-            <TextBox Grid.Row="1" Name="LiveLog" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" AutomationProperties.Name="Live diagnostic log output"/>
-        </Grid>
+                        <GroupBox Name="ProbeCaptureGroup" Header="Timestamps and packet capture" Margin="0,0,0,8">
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Name="PerProbeTimestamps" Grid.Column="0" Content="PerProbeTimestamps" Margin="4"/>
+                                <CheckBox Name="AutoCaptureOnFault" Grid.Column="1" Content="AutoCaptureOnFault" Margin="4"/>
+                                <TextBlock Grid.Column="2" Text="Method" VerticalAlignment="Center"/>
+                                <ComboBox Name="AutoCaptureMethod" Grid.Column="3" Margin="4">
+                                    <ComboBoxItem Content="pktmon"/>
+                                    <ComboBoxItem Content="netshtrace"/>
+                                </ComboBox>
+                                <TextBlock Grid.Column="4" Text="Seconds" VerticalAlignment="Center"/>
+                                <TextBox Name="AutoCaptureSeconds" Grid.Column="5" Margin="4"/>
+                                <TextBlock Grid.Column="6" Text="Max" VerticalAlignment="Center"/>
+                                <TextBox Name="AutoCaptureMax" Grid.Column="7" Margin="4"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Name="HelpGroup" Header="Quick Help" Margin="0,0,0,8">
+                            <TextBlock Name="QuickHelpTextHidden" Margin="8" TextWrapping="Wrap" Foreground="DimGray" Text="Advanced controls are available here. Use Setup for guided goals."/>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

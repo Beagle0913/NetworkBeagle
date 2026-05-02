@@ -8,6 +8,38 @@ function Test-NetworkDiagGuiIsAdmin {
     }
 }
 
+function Get-NetworkDiagGuiStateSchemaVersion {
+    return 2
+}
+
+function Get-NetworkDiagGuiAppVersion {
+    return "0.2.0"
+}
+
+function ConvertTo-NetworkDiagHashtable {
+    param([Parameter(Mandatory = $true)]$InputObject)
+    if ($null -eq $InputObject) { return $null }
+    if ($InputObject -is [hashtable]) { return $InputObject }
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $h = @{}
+        foreach ($k in $InputObject.Keys) { $h[[string]$k] = ConvertTo-NetworkDiagHashtable -InputObject $InputObject[$k] }
+        return $h
+    }
+    if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
+        return @($InputObject | ForEach-Object { ConvertTo-NetworkDiagHashtable -InputObject $_ })
+    }
+    if ($InputObject -is [psobject]) {
+        $props = @($InputObject.PSObject.Properties | Where-Object { $_.MemberType -in @("NoteProperty", "Property") })
+        if ($props.Count -le 0) { return $InputObject }
+        $h = @{}
+        foreach ($p in $props) {
+            $h[[string]$p.Name] = ConvertTo-NetworkDiagHashtable -InputObject $p.Value
+        }
+        return $h
+    }
+    return $InputObject
+}
+
 function Get-NetworkDiagGuiLimitations {
     return @{
         Ranges = @{
@@ -397,6 +429,54 @@ function Get-NetworkDiagGuiStateSnapshot {
     } catch {
         return $null
     }
+}
+
+function ConvertTo-NetworkDiagGuiStateEnvelope {
+    param([hashtable]$State)
+    if (-not $State) { $State = @{} }
+    return [ordered]@{
+        schemaVersion = Get-NetworkDiagGuiStateSchemaVersion
+        appVersion = Get-NetworkDiagGuiAppVersion
+        savedAt = (Get-Date).ToUniversalTime().ToString("o")
+        state = $State
+    }
+}
+
+function ConvertFrom-NetworkDiagGuiStateDocument {
+    param([hashtable]$Loaded)
+    if (-not $Loaded) {
+        return Merge-NetworkDiagGuiState -Overrides @{}
+    }
+
+    if ($Loaded.ContainsKey("schemaVersion")) {
+        $version = [int]$Loaded.schemaVersion
+        if ($version -eq 2) {
+            if ($Loaded.ContainsKey("state") -and $Loaded.state) {
+                return Merge-NetworkDiagGuiState -Overrides ([hashtable]$Loaded.state)
+            }
+            return Merge-NetworkDiagGuiState -Overrides @{}
+        }
+        throw "Unsupported GUI state schema version: $version"
+    }
+
+    # Legacy (v1): raw state object without envelope.
+    return Merge-NetworkDiagGuiState -Overrides $Loaded
+}
+
+function Write-NetworkDiagGuiStateDocument {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][hashtable]$State
+    )
+    $envelope = ConvertTo-NetworkDiagGuiStateEnvelope -State $State
+    [System.IO.File]::WriteAllText($Path, ($envelope | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding $false))
+}
+
+function Read-NetworkDiagGuiStateDocument {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $loadedRaw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    $loaded = ConvertTo-NetworkDiagHashtable -InputObject $loadedRaw
+    return ConvertFrom-NetworkDiagGuiStateDocument -Loaded $loaded
 }
 
 function ConvertTo-NetworkDiagGuiCliCommand {

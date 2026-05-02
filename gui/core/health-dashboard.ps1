@@ -25,9 +25,9 @@ function New-NetworkDiagGuiLiveHealthState {
 function Get-NetworkDiagGuiStatusBrush {
     param([string]$Status)
     $s = [string]$Status
-    if ($s -match "^(OK|PASS)") { return "DarkGreen" }
-    if ($s -match "^(DEGRADED|WARN|WARNING|MIXED)") { return "DarkGoldenrod" }
-    if ($s -match "^(n/a|N/A|WAITING)") { return "DimGray" }
+    if ($s -match "^(Healthy|OK|PASS)") { return "DarkGreen" }
+    if ($s -match "^(Degraded|WARN|WARNING|MIXED)") { return "DarkGoldenrod" }
+    if ($s -match "^(Unknown|Disabled|Insufficient|n/a|N/A|WAITING)") { return "DimGray" }
     return "DarkRed"
 }
 
@@ -46,8 +46,8 @@ function Add-NetworkDiagGuiTrendPoint {
 function ConvertTo-NetworkDiagGuiTrendScore {
     param([string]$Status)
     $s = [string]$Status
-    if ($s -match "^(OK|PASS)") { return 1 }
-    if ($s -match "^(n/a|N/A|WAITING)$") { return -1 }
+    if ($s -match "^(Healthy|OK|PASS)") { return 1 }
+    if ($s -match "^(Unknown|Disabled|Insufficient|n/a|N/A|WAITING)$") { return -1 }
     return 0
 }
 
@@ -62,16 +62,16 @@ function Get-NetworkDiagGuiTrendPercentText {
 
 function Get-NetworkDiagGuiSeverity {
     param([hashtable]$Health)
-    if ($Health.LastVerdict -and $Health.LastVerdict -ne "n/a" -and $Health.LastVerdict -ne "OK") { return "CRITICAL" }
+    if ($Health.LastVerdict -and $Health.LastVerdict -ne "n/a" -and $Health.LastVerdict -ne "OK") { return "Failing" }
     foreach ($v in @($Health.DnsStatus, $Health.GatewayStatus, $Health.ExternalStatus, $Health.TcpTlsStatus)) {
-        if ([string]$v -match "FAIL") { return "CRITICAL" }
+        if ([string]$v -match "Failing") { return "Failing" }
     }
     foreach ($v in @($Health.DnsStatus, $Health.GatewayStatus, $Health.ExternalStatus, $Health.TcpTlsStatus)) {
-        if ([string]$v -match "DEGRADED") { return "WARN" }
+        if ([string]$v -match "Degraded") { return "Degraded" }
     }
-    if ([int]$Health.IspFaultCount -gt 0 -or [int]$Health.LocalFaultCount -gt 0 -or [int]$Health.AnomalyCount -gt 0) { return "WARN" }
-    if ([int]$Health.CycleCount -gt 0) { return "OK" }
-    return "n/a"
+    if ([int]$Health.IspFaultCount -gt 0 -or [int]$Health.LocalFaultCount -gt 0 -or [int]$Health.AnomalyCount -gt 0) { return "Degraded" }
+    if ([int]$Health.CycleCount -gt 0) { return "Healthy" }
+    return "Insufficient data"
 }
 
 function Reset-NetworkDiagGuiLiveHealth {
@@ -162,28 +162,40 @@ function Update-NetworkDiagGuiHealthFromLine {
 
     if ($text -match "DNS=DNS:([\-0-9]+)ms") {
         $dns = [int]$Matches[1]
-        $h.DnsStatus = if ($dns -ge 0) { "OK (${dns}ms)" } else { "FAIL" }
+        if ($dns -lt 0) {
+            $h.DnsStatus = "Failing (timeout)"
+        } elseif ($dns -ge 500) {
+            $h.DnsStatus = "Degraded (${dns}ms)"
+        } else {
+            $h.DnsStatus = "Healthy (${dns}ms)"
+        }
         $parsedAny = $true
     } elseif ($text -match "DNS=(na|NA)") {
-        $h.DnsStatus = "n/a"
+        $h.DnsStatus = "Disabled"
         $parsedAny = $true
     }
 
     if ($text -match "\bGW=([\-0-9]+)ms\b") {
         $gw = [int]$Matches[1]
-        $h.GatewayStatus = if ($gw -ge 0) { "OK (${gw}ms)" } else { "FAIL" }
+        if ($gw -lt 0) {
+            $h.GatewayStatus = "Failing"
+        } elseif ($gw -ge 300) {
+            $h.GatewayStatus = "Degraded (${gw}ms)"
+        } else {
+            $h.GatewayStatus = "Healthy (${gw}ms)"
+        }
         $parsedAny = $true
     } elseif ($text -match "\bGW=(na|NA)\b") {
-        $h.GatewayStatus = "n/a"
+        $h.GatewayStatus = "Unknown"
         $parsedAny = $true
     }
 
     if ($text -match "EXT=(.+?)\s+DNS=") {
         $extSegment = $Matches[1]
         if ($extSegment -match ":-1ms|:na|:NA") {
-            $h.ExternalStatus = "DEGRADED"
+            $h.ExternalStatus = "Degraded"
         } else {
-            $h.ExternalStatus = "OK"
+            $h.ExternalStatus = "Healthy"
         }
         $parsedAny = $true
     }
@@ -192,17 +204,17 @@ function Update-NetworkDiagGuiHealthFromLine {
         $cf = $Matches[1]
         $gg = $Matches[2]
         if ($cf -eq "na" -or $gg -eq "na") {
-            $h.TcpTlsStatus = "n/a"
+            $h.TcpTlsStatus = "Disabled"
         } elseif ([int]$cf -ge 0 -and [int]$gg -ge 0) {
-            $h.TcpTlsStatus = "OK"
+            $h.TcpTlsStatus = "Healthy"
         } else {
-            $h.TcpTlsStatus = "FAIL"
+            $h.TcpTlsStatus = "Failing"
         }
         $parsedAny = $true
     }
 
     if ($text -match "TLS_.*=-1") {
-        $h.TcpTlsStatus = "DEGRADED"
+        $h.TcpTlsStatus = "Degraded"
         $parsedAny = $true
     }
 

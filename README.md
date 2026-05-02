@@ -20,7 +20,7 @@ If you only read one section, read this:
 
 1. Open the repo folder.
 2. Double-click `Start-NetworkBeagle-GUI.cmd`.
-3. Press `Run (Standard)` in the GUI.
+3. Press `Run basic test` in the GUI Setup tab.
 
 That gives you a useful baseline diagnostic run.
 
@@ -37,7 +37,7 @@ If you want to run it without learning the internals:
 1. Clone/download this repository.
 2. Open the project folder.
 3. Double-click `Start-NetworkBeagle-GUI.cmd`.
-4. In the GUI, keep defaults and press `Run (Standard)`.
+4. In the GUI Setup tab, keep defaults and press `Run basic test`.
 
 ## Quick Start (Power Users)
 
@@ -175,6 +175,7 @@ On non-OK cycles, additional context modules can run:
 
 `network-stability-test-gui.ps1` provides:
 
+- tabbed workflow (`Setup`, `Live Run`, `Results`, `History`, `Advanced`)
 - full parameter surface for the CLI
 - live validation + dependent control enablement
 - presets and profile save/load
@@ -280,4 +281,4 @@ This creates `network-stability-test.single.ps1` with inlined library modules.
 - Designed for PowerShell 5.1+ on Windows.
 - Some capabilities are best with admin rights (strict multi-NIC pinning, capture flows, fuller evidence capture).
 - Non-admin mode still runs diagnostics, but with reduced strictness in specific areas.
-- For best evidence quality in escalation scenarios, use GUI `Run Full Capabilities (Admin)` or launch elevated directly.
+- For best evidence quality in escalation scenarios, use GUI `Run full diagnostic as administrator` or launch elevated directly.
