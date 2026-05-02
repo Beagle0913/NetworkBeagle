@@ -40,7 +40,7 @@ function Restore-NetworkDiagGuiDraftStateIfAvailable {
 function Set-NetworkDiagGuiGoalSelection {
     param([Parameter(Mandatory = $true)][string]$GoalId)
     $controls = $script:App.Ui.Controls
-    if (-not $script:App.Config.GoalProfiles.ContainsKey($GoalId)) { return }
+    if (-not $script:App.Config.GoalProfiles.Contains($GoalId)) { return }
     $profile = Apply-NetworkDiagGuiGoalPreset -GoalId $GoalId -Controls $controls -GoalProfiles $script:App.Config.GoalProfiles
     if ($controls.ContainsKey("CurrentGoalText")) {
         $adminRec = if ([bool]$profile.AdminRecommended) { "Admin recommended" } else { "Admin optional" }
@@ -133,7 +133,7 @@ function Register-NetworkDiagGuiEvents {
 
     $controls.ApplyPreset.Add_Click({
         $selected = [string]$controls.PresetSelector.SelectedItem
-        if (-not $selected -or -not $script:App.Config.PresetMap.ContainsKey($selected)) { return }
+        if (-not $selected -or -not $script:App.Config.PresetMap.Contains($selected)) { return }
         $preset = $script:App.Config.PresetMap[$selected]
         Set-NetworkDiagGuiControlState -Controls $controls -State $preset
         Update-NetworkDiagDependentControls

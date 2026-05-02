@@ -32,13 +32,36 @@ try {
         $psExe = [string]$psCmd.Source
     }
 
-    # Array ArgumentList avoids quoting bugs when repo path contains spaces
+    $launcherLogRoot = Join-Path $env:TEMP "NetworkBeagle\launcher"
+    if (-not (Test-Path -LiteralPath $launcherLogRoot -PathType Container)) {
+        [void](New-Item -ItemType Directory -Path $launcherLogRoot -Force)
+    }
+    $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $stdoutPath = Join-Path $launcherLogRoot ("gui-launch-stdout_" + $stamp + ".log")
+    $stderrPath = Join-Path $launcherLogRoot ("gui-launch-stderr_" + $stamp + ".log")
+
+    # Array ArgumentList avoids quoting bugs when repo path contains spaces.
+    # Use -STA because WPF requires a single-threaded apartment.
     $psArgs = @(
+        "-STA",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-File", $guiScriptPath
     )
-    Start-Process -FilePath $psExe -ArgumentList $psArgs -WorkingDirectory $PSScriptRoot | Out-Null
+    $proc = Start-Process -FilePath $psExe -ArgumentList $psArgs -WorkingDirectory $PSScriptRoot -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+    Start-Sleep -Milliseconds 1400
+    $proc.Refresh()
+    if ($proc.HasExited) {
+        $stderr = ""
+        if (Test-Path -LiteralPath $stderrPath -PathType Leaf) {
+            $stderr = (Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue)
+        }
+        if (-not $stderr) {
+            $stderr = "The GUI process exited before opening a window. Check launcher logs in:`n$launcherLogRoot"
+        }
+        Show-LauncherMessage -Text ("NetworkBeagle GUI failed to start.`n`n" + $stderr) -Title "NetworkBeagle Launcher Error" -Icon ([System.Windows.MessageBoxImage]::Error)
+        exit 4
+    }
     exit 0
 } catch {
     Show-LauncherMessage -Text ("Unexpected launcher error:`n" + $_.Exception.Message) -Title "NetworkBeagle Launcher Error" -Icon ([System.Windows.MessageBoxImage]::Error)

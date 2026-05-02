@@ -136,7 +136,7 @@ function Apply-NetworkDiagGuiGoalPreset {
         [Parameter(Mandatory = $true)][hashtable]$Controls,
         [Parameter(Mandatory = $true)][hashtable]$GoalProfiles
     )
-    if (-not $GoalProfiles.ContainsKey($GoalId)) {
+    if (-not $GoalProfiles.Contains($GoalId)) {
         throw "Unknown goal preset: $GoalId"
     }
     $profile = $GoalProfiles[$GoalId]
