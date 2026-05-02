@@ -5,7 +5,7 @@
 ## Start
 
 ```powershell
-Set-Location "C:\Users\Dziugas\Desktop\NetworkTest"
+Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test-gui.ps1"
 ```
 
@@ -78,6 +78,6 @@ The main script receives `-OutputFolder <...>\script-output-root` and then creat
 Run a lightweight modular smoke check:
 
 ```powershell
-Set-Location "C:\Users\Dziugas\Desktop\NetworkTest"
+Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\validation\gui_modular_smoke.ps1"
 ```
