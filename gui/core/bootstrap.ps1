@@ -163,6 +163,53 @@ function Start-NetworkDiagGuiApp {
         AdvancedPreviewCliCommand = "Preview PowerShell command from current settings."
         AdvancedExportCliCommand = "Copy PowerShell command from current settings."
     }
+    $advancedButtons = @(
+        "ApplyAdvancedBundle", "UndoApplyAdvanced",
+        "ResetAdvancedAll", "ResetAdvancedTiming", "ResetAdvancedSwitches", "ResetAdvancedPathMtu",
+        "ResetAdvancedUdp", "ResetAdvancedLongTcp", "ResetAdvancedCapture",
+        "CopyAdvancedSnippet", "PasteAdvancedSnippet",
+        "AdvancedPreviewCliCommand", "AdvancedExportCliCommand"
+    )
+    foreach ($buttonName in $advancedButtons) {
+        if ($tooltips.ContainsKey($buttonName)) { continue }
+        if (-not $controls.ContainsKey($buttonName) -or $null -eq $controls[$buttonName]) { continue }
+        $caption = ""
+        try { $caption = [string]$controls[$buttonName].Content } catch { $caption = $buttonName }
+        if (-not $caption) { $caption = $buttonName }
+        $tooltips[$buttonName] = "Advanced action: $caption."
+    }
+    foreach ($controlName in $controls.Keys) {
+        if ($tooltips.ContainsKey($controlName)) { continue }
+        $control = $controls[$controlName]
+        if ($null -eq $control) { continue }
+
+        if ($control -is [System.Windows.Controls.Button]) {
+            $caption = ""
+            try { $caption = [string]$control.Content } catch { $caption = $controlName }
+            if (-not $caption) { $caption = $controlName }
+            $tooltips[$controlName] = "Action button: $caption."
+            continue
+        }
+        if ($control -is [System.Windows.Controls.CheckBox]) {
+            $caption = ""
+            try { $caption = [string]$control.Content } catch { $caption = $controlName }
+            if (-not $caption) { $caption = $controlName }
+            $tooltips[$controlName] = "Toggle option: $caption."
+            continue
+        }
+        if ($control -is [System.Windows.Controls.ComboBox]) {
+            $tooltips[$controlName] = "Choose a value for $controlName."
+            continue
+        }
+        if ($control -is [System.Windows.Controls.TextBox]) {
+            $tooltips[$controlName] = "Enter or review value for $controlName."
+            continue
+        }
+        if ($control -is [System.Windows.Controls.ListBox]) {
+            $tooltips[$controlName] = "Select an item from $controlName."
+            continue
+        }
+    }
     foreach ($name in $tooltips.Keys) {
         if ($controls.ContainsKey($name) -and $null -ne $controls[$name]) {
             $controls[$name].ToolTip = [string]$tooltips[$name]
