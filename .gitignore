@@ -1,0 +1,15 @@
+# Runtime outputs
+lib/runs/
+**/gui-launcher-runs/
+
+# Validation outputs and transient artifacts
+validation/**/*.json
+validation/**/*.csv
+validation/**/*.txt
+validation/**/*.log
+validation/**/*.zip
+
+# Temp and editor artifacts
+*.tmp
+*.bak
+*.user
