@@ -14,6 +14,52 @@ It includes:
 - smoke checks and tests (`validation/`, `tests/`)
 - optional ISP-ready evidence output
 
+## Quick Start
+
+Use this if you just want to run NetworkBeagle now.
+
+### 1) Clone and open the project
+
+```powershell
+git clone https://github.com/Beagle0913/NetworkBeagle.git
+cd NetworkBeagle
+```
+
+### 2) Pick one launch path
+
+- **Easiest (GUI, no terminal workflow):** double-click `Start-NetworkBeagle-GUI.cmd`
+- **GUI from terminal:**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test-gui.ps1"
+```
+
+- **CLI directly:**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps1"
+```
+
+### 3) First useful run
+
+- In GUI: choose a goal (or keep defaults) and click **Run basic test**.
+- In CLI: run defaults first, then inspect output in `.\runs\run_<timestamp>\`.
+
+## Table of contents
+
+- [Quick Start](#quick-start)
+- [Part 1 — Easy to understand (for everyone)](#part-1--easy-to-understand-for-everyone)
+- [Part 2 — At a glance (quick reference)](#part-2--at-a-glance-quick-reference)
+- [Part 3 — GUI in a bit more detail (still approachable)](#part-3--gui-in-a-bit-more-detail-still-approachable)
+- [Quick Start (Power Users)](#quick-start-power-users)
+- [What you get from a run](#what-you-get-from-a-run)
+- [Deep dive (architecture + capabilities)](#deep-dive-architecture--capabilities)
+- [Requirements and limitations](#requirements-and-limitations)
+- [Troubleshooting (technical)](#troubleshooting-technical)
+- [Quality and validation](#quality-and-validation)
+- [Project structure](#project-structure)
+- [Single-file bundle](#single-file-bundle)
+
 ---
 
 ## Part 1 — Easy to understand (for everyone)
@@ -97,12 +143,14 @@ More launcher-specific behavior (elevation, files per run, pointers like `latest
 
 ## Start Here (Easy Mode)
 
-If you want to run it without learning the internals:
+If you want the shortest possible setup path:
 
 1. Clone or download this repository.
 2. Open the project folder.
 3. Double-click `Start-NetworkBeagle-GUI.cmd`.
 4. On the **Setup** tab, keep defaults (or pick a goal), then press **Run basic test**.
+
+For terminal-first usage, jump to [Quick Start (Power Users)](#quick-start-power-users).
 
 ---
 
