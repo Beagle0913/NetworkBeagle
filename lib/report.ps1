@@ -694,6 +694,7 @@ TLS HANDSHAKE PROBE (SslStream.AuthenticateAsClientAsync)
   Individual handshake failures: $hsFail  (across both TCP_CF and TCP_GG target hosts)
   Cycles where TCP OK but at least one TLS failed: $tcpUpTlsDown
   CSV columns: TLS_CF_ms, TLS_GG_ms (-1 on failure; na when TCP connect didn't even succeed).
+  Validation: TLS success requires the OS trust store to accept the peer certificate chain.
   Tip: A non-zero 'TCP OK but TLS failed' count usually points at TLS inspection (corporate MITM, captive portal
        redirect, SNI filter) or stale client-clock / root-store issues rather than packet loss.
 

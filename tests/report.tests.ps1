@@ -104,4 +104,18 @@ Describe "Report helpers" {
         $section | Should Match "Heartbeat cadence:\s+every 15 min"
         $section | Should Match "Partial snapshots:\s+every 60 min"
     }
+
+    It "describes TLS trust-store validation in TLS section" {
+        $s = @{
+            CyclesCommitted = 10
+            TlsProbeCycles = 10
+            TlsHandshakeFailCycles = 1
+            TcpUpTlsDownCycles = 1
+        }
+        $r = @{
+            EnableTlsProbe = $true
+        }
+        $section = Build-NetworkDiagTlsProbeSection -S $s -R $r
+        $section | Should Match "OS trust store"
+    }
 }

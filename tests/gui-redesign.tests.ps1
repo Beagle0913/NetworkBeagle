@@ -54,4 +54,25 @@ Describe "Goal-first redesign helpers" {
         @($map.Running) -contains "Cancelled" | Should Be $true
         @($map.Stopping) -contains "Completed" | Should Be $true
     }
+
+    It "resolves CLI script path from repo root context" {
+        $tmpRoot = Join-Path $env:TEMP ("nb_repo_" + [guid]::NewGuid().ToString("N"))
+        [void](New-Item -ItemType Directory -Path $tmpRoot -Force)
+        $scriptPath = Join-Path $tmpRoot "network-stability-test.ps1"
+        [System.IO.File]::WriteAllText($scriptPath, "# test", (New-Object System.Text.UTF8Encoding $false))
+        $oldRepoRoot = if (Test-Path variable:script:NetworkDiagGuiRepoRoot) { [string]$script:NetworkDiagGuiRepoRoot } else { $null }
+        try {
+            $script:NetworkDiagGuiRepoRoot = $tmpRoot
+            Get-NetworkDiagGuiScriptPath | Should Be $scriptPath
+            $launch = New-NetworkDiagGuiLaunchCommand -RunnerPath (Join-Path $tmpRoot "invoke-networkdiag.ps1")
+            $launch.WorkingDirectory | Should Be $tmpRoot
+        } finally {
+            if ($null -eq $oldRepoRoot) {
+                Remove-Variable -Scope Script -Name NetworkDiagGuiRepoRoot -ErrorAction SilentlyContinue
+            } else {
+                $script:NetworkDiagGuiRepoRoot = $oldRepoRoot
+            }
+            Remove-Item -LiteralPath $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }

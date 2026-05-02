@@ -155,15 +155,28 @@ if (`$paramsRaw -is [System.Collections.IDictionary]) {
 function New-NetworkDiagGuiLaunchCommand {
     param([string]$RunnerPath)
 
+    $workingDir = if (Test-Path variable:script:NetworkDiagGuiRepoRoot) {
+        [string]$script:NetworkDiagGuiRepoRoot
+    } else {
+        [string](Split-Path -Path $PSScriptRoot -Parent -ErrorAction SilentlyContinue)
+    }
+    if (-not $workingDir) { $workingDir = $PSScriptRoot }
+
     return @{
         FileName = "powershell.exe"
         Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$RunnerPath`""
-        WorkingDirectory = $PSScriptRoot
+        WorkingDirectory = $workingDir
     }
 }
 
 function Get-NetworkDiagGuiScriptPath {
-    $p = Join-Path $PSScriptRoot "network-stability-test.ps1"
+    $root = if (Test-Path variable:script:NetworkDiagGuiRepoRoot) {
+        [string]$script:NetworkDiagGuiRepoRoot
+    } else {
+        [string](Split-Path -Path $PSScriptRoot -Parent -ErrorAction SilentlyContinue)
+    }
+    if (-not $root) { $root = $PSScriptRoot }
+    $p = Join-Path $root "network-stability-test.ps1"
     if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
         throw "Could not find network-stability-test.ps1 next to GUI launcher: $p"
     }
@@ -487,7 +500,6 @@ function Start-NetworkDiagGuiRun {
             Start-NetworkDiagGuiAdminProcessRelaunch -State $state -AutoRunElevated
             Set-NetworkDiagGuiStatus "Requested admin relaunch. Approve UAC to continue."
             Set-NetworkDiagGuiRunState -State "LaunchingElevated" -Message "Waiting for elevated relaunch."
-            Set-NetworkDiagGuiRunState -State "Idle" -Message "Waiting for elevated relaunch."
             return
         } catch {
             Set-NetworkDiagGuiStatus "Admin relaunch was canceled or failed: $($_.Exception.Message)"

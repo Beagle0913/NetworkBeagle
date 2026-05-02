@@ -18,11 +18,19 @@ function Test-NetworkDiagGuiHostPortToken {
     if (-not $Value) { return $false }
     $token = $Value.Trim()
     if (-not $token) { return $false }
-    if ($token -notmatch "^(?<host>[^:]+):(?<port>\d{1,5})$") { return $false }
-    $host = [string]$Matches.host
-    $port = [int]$Matches.port
+    $hostToken = ""
+    $port = 0
+    if ($token -match "^\[(?<host>[^\]]+)\]:(?<port>\d{1,5})$") {
+        $hostToken = [string]$Matches.host
+        $port = [int]$Matches.port
+    } elseif ($token -match "^(?<host>[^:]+):(?<port>\d{1,5})$") {
+        $hostToken = [string]$Matches.host
+        $port = [int]$Matches.port
+    } else {
+        return $false
+    }
     if ($port -lt 1 -or $port -gt 65535) { return $false }
-    return (Test-NetworkDiagGuiHostToken -Value $host)
+    return (Test-NetworkDiagGuiHostToken -Value $hostToken)
 }
 
 function Test-NetworkDiagGuiCanWriteDirectory {

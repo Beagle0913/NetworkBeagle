@@ -217,47 +217,6 @@ function Invoke-Tcp443Probe {
     }
 }
 
-function Initialize-NetworkDiagTlsTrustAllCallback {
-    <#
-    Returns a [RemoteCertificateValidationCallback] that always approves
-    the cert (so handshake latency reflects network + crypto, not chain
-    policy). The callback is implemented as a compiled C# static method
-    via Add-Type because a PowerShell scriptblock, when invoked by the
-    async SslStream pipeline, runs on a threadpool thread that has no
-    PowerShell Runspace attached and throws
-    'no Runspace available to run scripts in this thread'. The Add-Type
-    compilation happens once per session.
-    #>
-    $existing = Get-Variable -Scope Script -Name "NetworkDiagTlsTrustCallback" -ValueOnly -ErrorAction SilentlyContinue
-    if ($existing) { return $existing }
-    $src = @"
-using System;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
-
-namespace NetworkDiagTlsInternal {
-    public static class Trust {
-        public static bool Always(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors) {
-            return true;
-        }
-    }
-}
-"@
-    if (-not ([System.Management.Automation.PSTypeName]"NetworkDiagTlsInternal.Trust").Type) {
-        try {
-            Add-Type -TypeDefinition $src -Language CSharp -ErrorAction Stop | Out-Null
-        } catch {
-            return $null
-        }
-    }
-    $t = [NetworkDiagTlsInternal.Trust]
-    $mi = $t.GetMethod("Always")
-    if (-not $mi) { return $null }
-    $cb = [System.Net.Security.RemoteCertificateValidationCallback]::CreateDelegate([System.Net.Security.RemoteCertificateValidationCallback], $mi)
-    Set-Variable -Scope Script -Name "NetworkDiagTlsTrustCallback" -Value $cb -Force
-    return $cb
-}
-
 function Invoke-Tls443Probe {
     <#
     TLS handshake probe against port 443. Opens a TCP connection, wraps it
@@ -308,9 +267,9 @@ function Invoke-Tls443Probe {
         $client.ReceiveTimeout = $TimeoutMs
         $client.SendTimeout = $TimeoutMs
         $net = $client.GetStream()
-        $cb = Initialize-NetworkDiagTlsTrustAllCallback
-        if ($null -eq $cb) { return $res }
-        $ssl = New-Object System.Net.Security.SslStream($net, $false, $cb)
+        # Use default SslStream certificate validation so handshake success
+        # reflects both network reachability and trust-chain validity.
+        $ssl = New-Object System.Net.Security.SslStream($net, $false)
         # .NET Framework 4.x's `SslProtocols.Default` is SSL3 | Tls (1.0). Most public
         # endpoints refuse < TLS 1.2 now - enable Tls12 (and Tls13 when the CLR knows it).
         $protoVal = 0

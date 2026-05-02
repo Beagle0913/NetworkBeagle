@@ -376,26 +376,32 @@ function Split-NetworkDiagHostPort {
         $end = $s.IndexOf("]")
         if ($end -lt 2) { throw "malformed bracketed IPv6 literal: $Raw" }
         $h = $s.Substring(1, $end - 1)
+        if (-not $h) { throw "empty host in '$Raw'" }
         $rest = $s.Substring($end + 1)
+        $p = 0
         if ($rest.StartsWith(":")) {
-            $p = [int]$rest.Substring(1)
+            if (-not [int]::TryParse($rest.Substring(1), [ref]$p)) { throw "invalid port in '$Raw'" }
         } else {
             $p = [int]$DefaultPort
         }
+        if ($p -lt 1 -or $p -gt 65535) { throw "port out of range in '$Raw' (must be 1..65535)" }
         return @{ Host = $h; Port = $p }
     }
     $idx = $s.LastIndexOf(":")
     if ($idx -lt 0) {
-        if ($DefaultPort -le 0) { throw "no port in '$Raw' and no default" }
-        return @{ Host = $s; Port = [int]$DefaultPort }
+        $p = [int]$DefaultPort
+        if ($p -le 0) { throw "no port in '$Raw' and no default" }
+        if ($p -lt 1 -or $p -gt 65535) { throw "default port out of range ($p); must be 1..65535" }
+        return @{ Host = $s; Port = $p }
     }
     $h = $s.Substring(0, $idx)
+    if (-not $h) { throw "empty host in '$Raw'" }
     $portStr = $s.Substring($idx + 1)
     $p = 0
     if (-not [int]::TryParse($portStr, [ref]$p)) {
-        if ($DefaultPort -le 0) { throw "invalid port in '$Raw'" }
-        return @{ Host = $s; Port = [int]$DefaultPort }
+        throw "invalid port in '$Raw'"
     }
+    if ($p -lt 1 -or $p -gt 65535) { throw "port out of range in '$Raw' (must be 1..65535)" }
     return @{ Host = $h; Port = [int]$p }
 }
 
