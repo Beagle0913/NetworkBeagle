@@ -50,22 +50,22 @@ function Test-NetworkDiagGuiState {
     $warnings = [System.Collections.Generic.List[string]]::new()
 
     if (-not $State.OutputRoot) {
-        $errors.Add("Output root cannot be empty.")
+        $errors.Add("Choose an output folder so reports and logs have a save location.")
     }
     if (@($State.ExternalIcmpHosts).Count -lt 2 -or @($State.ExternalIcmpHosts).Count -gt 6) {
-        $errors.Add("ExternalIcmpHosts must contain 2 to 6 items.")
+        $errors.Add("Internet check targets need 2 to 6 entries (one host or IP per line).")
     }
     if (@($State.ExternalIcmpLabels).Count -gt 0 -and @($State.ExternalIcmpLabels).Count -ne @($State.ExternalIcmpHosts).Count) {
-        $errors.Add("ExternalIcmpLabels must be empty or match ExternalIcmpHosts count.")
+        $errors.Add("Target labels must be blank or match the number of internet check targets.")
     }
     if (@($State.TcpProbeHosts).Count -gt 0 -and @($State.TcpProbeHosts).Count -ne 2) {
-        $errors.Add("TcpProbeHosts must be empty or contain exactly 2 items.")
+        $errors.Add("TCP probe hosts must be blank or contain exactly 2 entries.")
     }
     if ($State.BurstOnFault -and $State.BurstIntervalSeconds -ge $State.IntervalSeconds) {
-        $errors.Add("BurstIntervalSeconds must be less than IntervalSeconds when BurstOnFault is enabled.")
+        $errors.Add("When burst mode is enabled, burst interval must be shorter than the main interval.")
     }
     if (-not $State.SkipDnsProbe -and -not $State.DnsProbeName) {
-        $errors.Add("DnsProbeName cannot be empty unless SkipDnsProbe is enabled.")
+        $errors.Add("Enter a DNS name to test, or enable SkipDnsProbe.")
     }
     if ($State.DurationMinutes -gt 10080) {
         $warnings.Add("Duration exceeds 7 days; logs can grow very large.")
@@ -74,32 +74,32 @@ function Test-NetworkDiagGuiState {
         $warnings.Add("DetailLog is enabled for a 24h+ run; launcher logs can become large.")
     }
     if (-not ($Limits.AllowedSets.MonitoringMode -contains $State.MonitoringMode)) {
-        $errors.Add("MonitoringMode must be one of: Auto, ShortRun, LongRun.")
+        $errors.Add("Monitoring mode must be one of: Auto, ShortRun, or LongRun.")
     }
     if (-not ($Limits.AllowedSets.ProbeAddressFamily -contains $State.ProbeAddressFamily)) {
         $errors.Add("ProbeAddressFamily must be IPv4 or IPv6.")
     }
     foreach ($h in @($State.ExternalIcmpHosts)) {
         if (-not (Test-NetworkDiagGuiHostToken -Value $h)) {
-            $errors.Add("ExternalIcmpHosts contains an invalid host/IP: $h")
+            $errors.Add("Internet check target is not a valid host/IP: $h")
         }
     }
     foreach ($h in @($State.TcpProbeHosts)) {
         if (-not (Test-NetworkDiagGuiHostToken -Value $h)) {
-            $errors.Add("TcpProbeHosts contains an invalid host/IP: $h")
+            $errors.Add("TCP probe host is not a valid host/IP: $h")
         }
     }
     if ($State.PathMtuProbeTarget -and -not (Test-NetworkDiagGuiHostToken -Value $State.PathMtuProbeTarget)) {
-        $errors.Add("PathMtuProbeTarget must be a valid hostname or IP.")
+        $errors.Add("Path MTU target must be a valid hostname or IP.")
     }
     if ($State.ContainsKey("EnableUdpProbe") -and [bool]$State.EnableUdpProbe) {
         if (-not (Test-NetworkDiagGuiHostPortToken -Value $State.UdpProbeTarget)) {
-            $errors.Add("UdpProbeTarget must be in host:port format and use a valid host/IP and port.")
+            $errors.Add("UDP target must use host:port format and include a valid host/IP and port.")
         }
     }
     if ($State.ContainsKey("EnableLongLivedTcp") -and [bool]$State.EnableLongLivedTcp) {
         if (-not (Test-NetworkDiagGuiHostPortToken -Value $State.LongLivedTcpTarget)) {
-            $errors.Add("LongLivedTcpTarget must be in host:port format and use a valid host/IP and port.")
+            $errors.Add("Long-lived TCP target must use host:port format and include a valid host/IP and port.")
         }
     }
     if ($State.ContainsKey("AutoCaptureOnFault") -and [bool]$State.AutoCaptureOnFault) {
@@ -107,7 +107,7 @@ function Test-NetworkDiagGuiState {
             $errors.Add("AutoCaptureMethod must be one of: pktmon, netshtrace.")
         }
         if (-not [bool]$script:App.Context.IsAdminGui) {
-            $warnings.Add("AutoCaptureOnFault requested in non-admin mode; capture may be skipped by runtime permissions.")
+            $warnings.Add("Auto-capture is enabled in non-admin mode; runtime may skip capture due to permissions.")
         }
     }
     return @{ Errors = @($errors); Warnings = @($warnings) }
@@ -149,7 +149,7 @@ function Invoke-NetworkDiagGuiValidation {
     } catch {
         $script:App.Run.ValidationHasErrors = $true
         $controls.ValidationText.Foreground = "DarkRed"
-        $controls.ValidationText.Text = "Error: $($_.Exception.Message)"
+        $controls.ValidationText.Text = "Please fix this setting: $($_.Exception.Message)"
         Update-NetworkDiagGuiActionButtons
         return
     }
@@ -158,15 +158,15 @@ function Invoke-NetworkDiagGuiValidation {
     if ($validation.Errors.Count -gt 0) {
         $script:App.Run.ValidationHasErrors = $true
         $controls.ValidationText.Foreground = "DarkRed"
-        $controls.ValidationText.Text = "Error: " + ($validation.Errors -join " | ")
+        $controls.ValidationText.Text = "Please fix before running: " + ($validation.Errors -join " | ")
     } elseif ($validation.Warnings.Count -gt 0) {
         $script:App.Run.ValidationHasErrors = $false
         $controls.ValidationText.Foreground = "DarkGoldenrod"
-        $controls.ValidationText.Text = "Warning: " + ($validation.Warnings -join " | ")
+        $controls.ValidationText.Text = "Heads up: " + ($validation.Warnings -join " | ")
     } else {
         $script:App.Run.ValidationHasErrors = $false
         $controls.ValidationText.Foreground = "DarkOliveGreen"
-        $controls.ValidationText.Text = "Success: validation ready to run."
+        $controls.ValidationText.Text = "Looks good. Ready to run."
     }
     if ($controls.ContainsKey("AtGlanceSummary")) {
         $mode = if ($controls.ContainsKey("UserExperienceMode") -and $controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "n/a" }
@@ -183,7 +183,7 @@ function Invoke-NetworkDiagGuiValidation {
             $start = [math]::Max(0, $outRoot.Length - $tail)
             $outDisp = "..." + $outRoot.Substring($start)
         }
-        $controls.AtGlanceSummary.Text = "Mode=$mode | Duration=$($state.DurationMinutes)m | Interval=$($state.IntervalSeconds)s | Monitoring=$($state.MonitoringMode) | Probes=$($probeSet -join '+') | Output=$outDisp"
+        $controls.AtGlanceSummary.Text = "View=$mode | Time=$($state.DurationMinutes)m | CheckEvery=$($state.IntervalSeconds)s | Monitoring=$($state.MonitoringMode) | Checks=$($probeSet -join '+') | Output=$outDisp"
     }
     Update-NetworkDiagGuiActionButtons
 }

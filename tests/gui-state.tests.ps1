@@ -30,8 +30,8 @@ Describe "GUI state helpers" {
 
         $result = Test-NetworkDiagGuiState -State $state -Limits $limits
         $result.Errors.Count | Should BeGreaterThan 0
-        ($result.Errors -join " | ") | Should Match "invalid host/IP"
-        ($result.Errors -join " | ") | Should Match "DnsProbeName cannot be empty"
+        ($result.Errors -join " | ") | Should Match "invalid host/IP|not a valid host/IP"
+        ($result.Errors -join " | ") | Should Match "DNS name to test|DnsProbeName"
     }
 
     It "emits enabled optional probe parameters into cli map" {
@@ -63,8 +63,8 @@ Describe "GUI state helpers" {
             LongLivedTcpTarget = "stillbad"
         }
         $result = Test-NetworkDiagGuiState -State $state -Limits $limits
-        ($result.Errors -join " | ") | Should Match "UdpProbeTarget must be in host:port"
-        ($result.Errors -join " | ") | Should Match "LongLivedTcpTarget must be in host:port"
+        ($result.Errors -join " | ") | Should Match "UDP target must use host:port|UdpProbeTarget must be in host:port"
+        ($result.Errors -join " | ") | Should Match "Long-lived TCP target must use host:port|LongLivedTcpTarget must be in host:port"
     }
 
     It "exports a runnable cli command string from state" {
@@ -77,5 +77,18 @@ Describe "GUI state helpers" {
         $cmd | Should Match "network-stability-test.ps1"
         $cmd | Should Match "-EnableUdpProbe"
         $cmd | Should Match "-UdpProbeTarget"
+    }
+
+    It "renders list parameters in CLI export syntax" {
+        $state = Merge-NetworkDiagGuiState -Overrides @{
+            ExternalIcmpHosts = @("1.1.1.1", "8.8.8.8")
+            ExternalIcmpLabels = @("A", "B")
+            TcpProbeHosts = @("1.1.1.1", "8.8.8.8")
+        }
+        $state.OutputFolder = "C:\Temp\out"
+        $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+        $cmd | Should Match "-ExternalIcmpHosts @\("
+        $cmd | Should Match "-ExternalIcmpLabels @\("
+        $cmd | Should Match "-TcpProbeHosts @\("
     }
 }

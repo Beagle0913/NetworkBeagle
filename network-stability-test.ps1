@@ -46,6 +46,24 @@
 .PARAMETER IntervalSeconds
     Time between each ping cycle (default: 3 seconds). Must be 1-3600.
 
+.PARAMETER MonitoringMode
+    Controls monitoring defaults used by long-running safety features:
+    Auto (default), ShortRun, or LongRun. Auto resolves to LongRun when
+    DurationMinutes is 120 or more; otherwise ShortRun.
+
+.PARAMETER HeartbeatMinutes
+    Heartbeat cadence in minutes. Use -1 (default) to use MonitoringMode
+    defaults (LongRun=15, ShortRun=0).
+
+.PARAMETER SnapshotMinutes
+    Partial report/summary snapshot cadence in minutes. Use -1 (default) to
+    use MonitoringMode defaults (LongRun=60, ShortRun=0).
+
+.PARAMETER EventLogLookbackMinutes
+    Event log lookback in minutes for config-audit event checks. Use -1
+    (default) to use MonitoringMode defaults (LongRun=15, ShortRun=0, where
+    0 means since run start).
+
 .PARAMETER OutputFolder
     Root folder where run folders are created. Each execution writes logs into
     OutputFolder\runs\run_<timestamp>. Probed for write access; if not writable,
@@ -160,6 +178,10 @@
 .PARAMETER SkipJsonSummary
     Disable the run summary JSON (network_summary_<ts>.json) written next
     to the text report at run end. Default on.
+
+.PARAMETER SelfTest
+    Runs startup preflight/self-test checks only, writes self-test text/JSON,
+    then exits without entering the cycle loop.
 
 .PARAMETER EnableUdpProbe
     Run a continuous UDP send-only probe in a background runspace at a

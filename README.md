@@ -55,6 +55,14 @@ Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps1"
 ```
 
+### PowerShell-only path (recommended)
+
+If you want to operate fully from terminal:
+
+1. Start with direct CLI (`network-stability-test.ps1`) and use `Get-Help ".\network-stability-test.ps1" -Full`.
+2. If you configure a run in the GUI, use `Copy PowerShell Command` to export an equivalent command.
+3. Replace placeholder output paths and re-run from PowerShell for repeatable automation.
+
 ### Common CLI examples
 
 Longer run with detailed per-cycle narrative:
@@ -80,6 +88,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps
   -EnableUdpProbe -UdpProbeTarget "8.8.8.8:443" -UdpProbeRateHz 30 `
   -EnableLongLivedTcp -LongLivedTcpTarget "1.1.1.1:443"
 ```
+
+## GUI Defaults vs Raw CLI Defaults
+
+GUI and CLI execute the same engine (`network-stability-test.ps1`), but GUI startup defaults are intentionally tuned for guided operation and do not exactly match "CLI with no parameters".
+
+Examples where GUI defaults are typically more opinionated:
+
+- `DetailLog` (GUI commonly enables it)
+- `RoutingRefreshIntervalCycles` (GUI may set periodic refresh)
+- `EnableTlsProbe` and `IspEvidenceZip` (GUI may enable convenience/signal defaults)
+
+If you need exact reproducibility between GUI and terminal:
+
+1. Set options in GUI.
+2. Use `Copy PowerShell Command`.
+3. Run that exported command in PowerShell.
 
 ## What You Get from a Run
 

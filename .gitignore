@@ -18,6 +18,7 @@ validation/**/*.zip
 # Local heavyweight/runtime extras not required for source publishing
 oracleJdk-26/
 run_ethwifi/
+network-stability-test.single.ps1
 
 # Capture and trace artifacts
 *.etl

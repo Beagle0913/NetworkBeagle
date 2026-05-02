@@ -37,9 +37,9 @@
 
         <Border Grid.Row="1" Background="#F5F5F5" Padding="6,4" CornerRadius="3" Margin="0,0,0,8" BorderBrush="#D0D0D0" BorderThickness="1">
             <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                <Button Name="RunNormal" Content="Run (Standard)" Width="160" Margin="0,0,8,0"/>
-                <Button Name="RunAdmin" Content="Run Full Capabilities (Admin)" Width="240" Margin="0,0,8,0"/>
-                <Button Name="StopRun" Content="Stop Active Run" Width="140" Margin="0,0,8,0"/>
+                <Button Name="RunNormal" Content="Run (Standard)" Width="160" Margin="0,0,8,0" AutomationProperties.Name="Run test with current permissions"/>
+                <Button Name="RunAdmin" Content="Run Full Capabilities (Admin)" Width="240" Margin="0,0,8,0" AutomationProperties.Name="Run test with administrator rights"/>
+                <Button Name="StopRun" Content="Stop Active Run" Width="140" Margin="0,0,8,0" AutomationProperties.Name="Stop the active network diagnostic run"/>
                 <Button Name="OpenCurrentRun" Content="Open Current Run Folder" Width="180" Margin="0,0,8,0"/>
                 <Button Name="OpenCurrentLogs" Content="Open Current Logs Folder" Width="180"/>
             </WrapPanel>
@@ -70,7 +70,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Name="RunBasicsGroup" Header="Run Basics" Margin="0,0,0,8">
+                <GroupBox Name="RunBasicsGroup" Header="Run Basics (Recommended)" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -85,23 +85,23 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="DurationMinutes" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Run duration (minutes)" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="DurationMinutes" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Run duration in minutes"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="IntervalSeconds" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Check every (seconds)" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="IntervalSeconds" Grid.Row="0" Grid.Column="3" Style="{StaticResource FieldInput}" AutomationProperties.Name="Main cycle interval in seconds"/>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="MonitoringMode" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="Monitoring profile" Style="{StaticResource FieldLabel}"/>
                         <ComboBox Name="MonitoringMode" Grid.Row="0" Grid.Column="5" Margin="4" AutomationProperties.Name="Monitoring mode">
                             <ComboBoxItem Content="Auto"/>
                             <ComboBoxItem Content="ShortRun"/>
                             <ComboBoxItem Content="LongRun"/>
                         </ComboBox>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="HeartbeatMinutes" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Heartbeat minutes" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="HeartbeatMinutes" Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="SnapshotMinutes" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="Snapshot minutes" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="SnapshotMinutes" Grid.Row="1" Grid.Column="3" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="EventLogLookbackMinutes" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="4" Text="Event lookback minutes" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="EventLogLookbackMinutes" Grid.Row="1" Grid.Column="5" Style="{StaticResource FieldInput}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ProbeAddressFamily" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="IP version" Style="{StaticResource FieldLabel}"/>
                         <ComboBox Name="ProbeAddressFamily" Grid.Row="2" Grid.Column="1" Margin="4">
                             <ComboBoxItem Content="IPv4"/>
                             <ComboBoxItem Content="IPv6"/>
@@ -127,7 +127,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Name="OutputListsGroup" Header="Output + Lists" Margin="0,0,0,8">
+                <GroupBox Name="OutputListsGroup" Header="Where to Save + Targets" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180"/>
@@ -141,20 +141,20 @@
                             <RowDefinition Height="120"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Output root" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Name="OutputRoot" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Launcher output root"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Save reports to" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Name="OutputRoot" Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldInput}" AutomationProperties.Name="Root folder for saved reports and logs"/>
                         <Button Name="BrowseOutputRoot" Grid.Row="0" Grid.Column="2" Margin="4" Content="Browse"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="ExternalIcmpHosts (2..6)" VerticalAlignment="Top"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Internet targets (2..6)" VerticalAlignment="Top"/>
                         <TextBox Name="ExternalIcmpHosts" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ExternalIcmpLabels (optional)" VerticalAlignment="Top"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Target labels (optional)" VerticalAlignment="Top"/>
                         <TextBox Name="ExternalIcmpLabels" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="TcpProbeHosts (optional; exactly 2)" VerticalAlignment="Top"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="TCP targets (optional; exactly 2)" VerticalAlignment="Top"/>
                         <TextBox Name="TcpProbeHosts" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="4" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="DnsProbeName" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="DNS name to test" Style="{StaticResource FieldLabel}"/>
                         <TextBox Name="DnsProbeName" Grid.Row="4" Grid.Column="1" Style="{StaticResource FieldInput}"/>
                     </Grid>
                 </GroupBox>
@@ -323,7 +323,7 @@
                         <Button Name="OpenSelectedLogs" Grid.Row="2" Grid.Column="5" Margin="4" Content="Open selected logs"/>
 
                         <WrapPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="5" Margin="4,6,4,0">
-                            <Button Name="ExportCliCommand" Content="Copy CLI Command" Margin="0,0,8,0"/>
+                            <Button Name="ExportCliCommand" Content="Copy PowerShell Command" Margin="0,0,8,0"/>
                             <Button Name="CopyArtifactPaths" Content="Copy Artifact Paths" Margin="0,0,8,0"/>
                             <Button Name="OpenLaunchConfig" Content="Open launch-config.json" Margin="0,0,8,0"/>
                             <Button Name="OpenGuiState" Content="Open gui-state.json"/>
@@ -333,7 +333,7 @@
 
                 <TextBlock Name="StatusText" Foreground="DarkSlateBlue" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Run status text"/>
                 <TextBlock Name="ValidationText" Foreground="DarkOliveGreen" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Validation status text"/>
-                <TextBlock Name="ParserStatusText" Foreground="SlateGray" Margin="0,0,0,8" TextWrapping="Wrap" Text="Parser status: waiting for run output..."/>
+                <TextBlock Name="ParserStatusText" Foreground="SlateGray" Margin="0,0,0,8" TextWrapping="Wrap" Text="Parser status: waiting for run output..." AutomationProperties.Name="Parser status summary"/>
 
                 <GroupBox Name="HealthGroup" Header="Live Health Dashboard" Margin="0,0,0,8">
                     <Grid Margin="8">
@@ -385,7 +385,7 @@
                 </GroupBox>
 
                 <GroupBox Name="HelpGroup" Header="Quick Help" Margin="0,0,0,8">
-                    <TextBlock Name="QuickHelpText" Margin="8" TextWrapping="Wrap" Foreground="DimGray" Text="Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy CLI command."/>
+                    <TextBlock Name="QuickHelpText" Margin="8" TextWrapping="Wrap" Foreground="DimGray" Text="Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy PowerShell command."/>
                 </GroupBox>
             </StackPanel>
         </ScrollViewer>
@@ -403,7 +403,7 @@
                 <CheckBox Name="LiveLogStderrOnly" Content="Show stderr only" Margin="0,0,8,0" VerticalAlignment="Center"/>
                 <Button Name="ClearLiveLog" Content="Clear Log"/>
             </WrapPanel>
-            <TextBox Grid.Row="1" Name="LiveLog" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+            <TextBox Grid.Row="1" Name="LiveLog" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" AutomationProperties.Name="Live diagnostic log output"/>
         </Grid>
     </Grid>
 </Window>

@@ -34,29 +34,29 @@ function Start-NetworkDiagGuiApp {
 
     $isAdmin = Test-NetworkDiagGuiIsAdmin
     $controls.AdminBanner.Text = if ($isAdmin) {
-        "Admin context: elevated. Full capability paths are available."
+        "You are running as Administrator. Full diagnostics and capture paths are available."
     } else {
-        "Admin context: non-admin. Some features run in degraded/loose mode. Use 'Run Full Capabilities (Admin)' for strict behavior."
+        "You are running without Administrator rights. The app still works, but some deep diagnostics are limited. Use 'Run Full Capabilities (Admin)' for the most complete results."
     }
-    $controls.RunabilityHint.Text = "Runability: advanced users can run via PowerShell; less technical users can use Start-NetworkBeagle-GUI.cmd."
+    $controls.RunabilityHint.Text = "Easy path: use this window and click Run. Power users can also run the same test directly from PowerShell."
     foreach ($cbName in @("SkipMultiNicCrossCheck","SkipConfigAudit","SkipCableHints","RequireEthernet","IspEvidenceZip")) {
         $controls[$cbName].ToolTip = ($limits.AdminCaveats -join " ")
     }
     $tooltips = @{
-        UserExperienceMode = "Beginner mode shows guided defaults; Expert mode keeps a compact, scan-friendly view."
-        DurationMinutes = "Total run duration in minutes."
-        IntervalSeconds = "Main cycle interval in seconds."
-        MonitoringMode = "Auto picks profile by duration; ShortRun/LongRun forces behavior."
+        UserExperienceMode = "Beginner keeps the screen focused on core settings. Expert shows every advanced control."
+        DurationMinutes = "How long to run the test, in minutes."
+        IntervalSeconds = "How often each network check cycle runs."
+        MonitoringMode = "Auto chooses defaults by run length; ShortRun and LongRun force a specific behavior profile."
         HeartbeatMinutes = "Heartbeat cadence; use -1 for script default."
         SnapshotMinutes = "Partial snapshot cadence; use -1 for script default."
         EventLogLookbackMinutes = "Event lookback window; use -1 for script default."
         ProbeAddressFamily = "Select IPv4 or IPv6 probing mode."
-        OutputRoot = "Base folder where launcher run folders are created."
+        OutputRoot = "Folder where run reports, logs, and exports are saved."
         BrowseOutputRoot = "Pick output root folder."
-        ExternalIcmpHosts = "2 to 6 external hosts/IPs. One per line."
+        ExternalIcmpHosts = "Internet targets to check (2 to 6). Use one hostname or IP per line."
         ExternalIcmpLabels = "Optional labels matching host count."
         TcpProbeHosts = "Optional two hosts for TCP probe. Leave empty to auto-pick."
-        DnsProbeName = "DNS name resolved each cycle when DNS probe is enabled."
+        DnsProbeName = "Domain name to resolve during each cycle when DNS checks are on."
         IcmpCountPerTarget = "ICMP attempts per target each cycle."
         IcmpTimeoutSeconds = "Timeout per ICMP attempt."
         DnsTimeoutMs = "DNS resolution timeout cap in milliseconds."
@@ -67,7 +67,7 @@ function Start-NetworkDiagGuiApp {
         GwIcmpPolicyConfirmCycles = "Cycles needed before classifying GW ICMP policy behavior."
         RoutingRefreshIntervalCycles = "Re-resolve routes every N cycles (0 disables)."
         PathMtuProbeTarget = "Optional host/IP for path MTU probing during audits."
-        RequireEthernet = "Fail startup if default route is not Ethernet-class."
+        RequireEthernet = "Stop startup if the active route is not Ethernet-based."
         SkipTcpProbe = "Disable TCP/443 probe checks."
         DetailLog = "Write a detailed narrative log file per run."
         LegacyCsvShape = "Use legacy CSV columns for compatibility."
@@ -103,8 +103,8 @@ function Start-NetworkDiagGuiApp {
         RecentRunsList = "Recent launcher runs in this session."
         OpenSelectedRun = "Open selected run folder in Explorer."
         OpenSelectedLogs = "Open selected logs folder in Explorer."
-        RunNormal = "Start with current permissions."
-        RunAdmin = "Relaunch elevated (UAC) for strict/full capabilities."
+        RunNormal = "Start now with current permissions."
+        RunAdmin = "Restart with Administrator rights (UAC prompt) for full diagnostics."
         StopRun = "Stop the currently running diagnostic process."
         OpenCurrentRun = "Open the active run folder."
         OpenCurrentLogs = "Open the active logs folder."
@@ -163,10 +163,10 @@ function Start-NetworkDiagGuiApp {
 
     $controls.RuntimeRulesText.Text = (($limits.RuntimeRules | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
     $controls.OutputFallbackText.Text = (($limits.OutputFallback | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
-    $controls.QuickHelpText.Text = "Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy CLI command."
+    $controls.QuickHelpText.Text = "Beginner mode: keep defaults and click Run (Standard). Use Run Full Capabilities (Admin) for deeper checks."
     $controls.UserExperienceMode.SelectedIndex = 0
-    $controls.OptionHelpText.Text = "Tip: move the mouse over any setting below (or click into it) to see what it does. Run buttons stay pinned under the yellow banner."
-    $controls.AtGlanceSummary.Text = "Mode=Beginner | Preset=default | Ready"
+    $controls.OptionHelpText.Text = "Tip: hover over any setting or tab into it to see a plain-language explanation."
+    $controls.AtGlanceSummary.Text = "View=Beginner | Preset=default | Ready"
 
     Invoke-NetworkDiagGuiValidation
     Reset-NetworkDiagGuiLiveHealth

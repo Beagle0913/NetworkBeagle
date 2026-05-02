@@ -53,10 +53,20 @@ function Set-NetworkDiagGuiExperienceMode {
     $controls = $script:App.Ui.Controls
     $selected = if ($controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "Beginner (guided)" }
     $isBeginner = $selected -like "Beginner*"
-    $advancedGroups = @("FeatureSwitchesGroup", "UdpGroup", "LongTcpGroup", "ProbeCaptureGroup", "RuntimeRulesGroup", "TimingGroup", "PathMtuGroup")
+    $advancedGroups = @(
+        "FeatureSwitchesGroup", "UdpGroup", "LongTcpGroup", "ProbeCaptureGroup", "RuntimeRulesGroup", "TimingGroup", "PathMtuGroup",
+        "ProfilesGroup", "AnalysisGroup", "IncidentGroup"
+    )
     foreach ($groupName in $advancedGroups) {
         if ($controls.ContainsKey($groupName) -and $null -ne $controls[$groupName]) {
             $controls[$groupName].Visibility = if ($isBeginner) { [System.Windows.Visibility]::Collapsed } else { [System.Windows.Visibility]::Visible }
+        }
+    }
+    if ($controls.ContainsKey("QuickHelpText")) {
+        if ($isBeginner) {
+            $controls.QuickHelpText.Text = "Beginner mode: keep defaults and use Run (Standard). Use Run Full Capabilities (Admin) for deeper checks."
+        } else {
+            $controls.QuickHelpText.Text = "Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy PowerShell command."
         }
     }
 }
