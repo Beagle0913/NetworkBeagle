@@ -21,18 +21,24 @@ try {
         exit 2
     }
 
-    $psCmd = Get-Command -Name "powershell.exe" -ErrorAction SilentlyContinue
-    if (-not $psCmd) {
-        Show-LauncherMessage -Text "Windows PowerShell was not found on this system. Install PowerShell 5.1+ and retry." -Title "NetworkBeagle Launcher Error" -Icon ([System.Windows.MessageBoxImage]::Error)
-        exit 3
+    # Prefer System32 Windows PowerShell 5.1 so the GUI runs even when PATH omits powershell.exe
+    $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (-not (Test-Path -LiteralPath $psExe -PathType Leaf)) {
+        $psCmd = Get-Command -Name "powershell.exe" -ErrorAction SilentlyContinue
+        if (-not $psCmd) {
+            Show-LauncherMessage -Text "Windows PowerShell was not found on this system. Install PowerShell 5.1+ and retry." -Title "NetworkBeagle Launcher Error" -Icon ([System.Windows.MessageBoxImage]::Error)
+            exit 3
+        }
+        $psExe = [string]$psCmd.Source
     }
 
-    $args = @(
+    # Array ArgumentList avoids quoting bugs when repo path contains spaces
+    $psArgs = @(
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
-        "-File", "`"$guiScriptPath`""
-    ) -join " "
-    Start-Process -FilePath "powershell.exe" -ArgumentList $args -WorkingDirectory $PSScriptRoot | Out-Null
+        "-File", $guiScriptPath
+    )
+    Start-Process -FilePath $psExe -ArgumentList $psArgs -WorkingDirectory $PSScriptRoot | Out-Null
     exit 0
 } catch {
     Show-LauncherMessage -Text ("Unexpected launcher error:`n" + $_.Exception.Message) -Title "NetworkBeagle Launcher Error" -Icon ([System.Windows.MessageBoxImage]::Error)
