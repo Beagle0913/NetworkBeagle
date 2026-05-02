@@ -3,113 +3,61 @@
 [![CI](https://github.com/Beagle0913/NetworkBeagle/actions/workflows/ci.yml/badge.svg)](https://github.com/Beagle0913/NetworkBeagle/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Windows-focused network stability diagnostics with:
+NetworkBeagle is a Windows-first network diagnostics toolkit for finding intermittent connectivity problems that short tests often miss.
 
-- a full PowerShell CLI runner (`network-stability-test.ps1`),
-- a WPF GUI launcher (`network-stability-test-gui.ps1`),
-- modular probe/audit libraries (`lib/*.ps1`),
-- smoke checks and tests (`validation/`, `tests/`),
-- optional ISP-ready evidence output.
+It includes:
 
-This project is designed for long-running, layered diagnostics where short ping tests are not enough to explain intermittent failures.
+- a full PowerShell CLI runner (`network-stability-test.ps1`)
+- a WPF GUI launcher (`network-stability-test-gui.ps1`)
+- a one-click launcher for non-technical users (`Start-NetworkBeagle-GUI.cmd`)
+- modular probe/audit libraries (`lib/*.ps1`)
+- smoke checks and tests (`validation/`, `tests/`)
+- optional ISP-ready evidence output
 
-## Publishing and project health
+## At a Glance
 
-- License: `MIT` (see `LICENSE`)
-- Security policy: `SECURITY.md`
-- Contributing guide: `CONTRIBUTING.md`
-- Support policy: `SUPPORT.md`
-- Code of conduct: `CODE_OF_CONDUCT.md`
-- Change history: `CHANGELOG.md`
+If you only read one section, read this:
 
-## What the tool does
+1. Open the repo folder.
+2. Double-click `Start-NetworkBeagle-GUI.cmd`.
+3. Press `Run (Standard)` in the GUI.
 
-Each cycle inspects network behavior from local stack to upstream path:
+That gives you a useful baseline diagnostic run.
 
-1. Loopback and adapter state/counters
-2. Optional DNS timed probe
-3. Underlay LAN gateway (when resolved) and primary gateway ICMP
-4. External ICMP targets (multiple targets, multiple pings per target)
-5. Optional TCP/443 probes
-6. Optional TLS handshake probes on top of TCP
+## Choose Your Path
 
-On non-OK cycles, additional modules can run:
+- **I want the easiest path:** use the one-click GUI launcher (`Start-NetworkBeagle-GUI.cmd`).
+- **I prefer terminal control:** use PowerShell commands (`network-stability-test-gui.ps1` or `network-stability-test.ps1`).
+- **I need internals and full behavior:** jump to [Deep Dive (Architecture + Capabilities)](#deep-dive-architecture--capabilities).
 
-- config audit (IP/subnet/proxy/events/power/MTU checks),
-- cable/NIC physical hints,
-- multi-NIC cross-check (parallel alternate adapter probing),
-- optional fault-triggered packet capture.
+## Start Here (Easy Mode)
 
-## Core capabilities
+If you want to run it without learning the internals:
 
-### Probe and diagnosis layers
+1. Clone/download this repository.
+2. Open the project folder.
+3. Double-click `Start-NetworkBeagle-GUI.cmd`.
+4. In the GUI, keep defaults and press `Run (Standard)`.
 
-- ICMP reliability and latency/jitter over time
-- DNS responsiveness and failure tracking
-- TCP reachability and optional TLS handshake signal
-- Underlay/route awareness (including refresh intervals)
-- Wi-Fi signal capture (SSID/BSSID/signal/radio/channel)
-- Continuous UDP probe mode for micro-blackhole/TX-stall detection
-- Long-lived TCP session probe for reset/timeout visibility
-- Per-probe timestamping for cycle-level timing analysis
+## Quick Start (Power Users)
 
-### Fault-context enrichment
-
-- Burst-on-fault short-interval mode
-- Device/network config audit on fault conditions
-- Cable/NIC suspect heuristics
-- Multi-NIC strict/loose cross-check logic
-- Automatic capture-on-fault (`pktmon`/`netsh trace`) with limits
-
-### Output and reporting
-
-- CSV timeline with cycle-by-cycle metrics
-- Human-readable text report
-- Optional detail log narrative
-- Optional JSON summary (`network_summary_<timestamp>.json`)
-- Optional ISP evidence bundle + optional ZIP compression
-
-## GUI launcher
-
-`network-stability-test-gui.ps1` provides:
-
-- full parameter surface of the CLI script,
-- input validation for key runtime rules,
-- preset application and profile save/load,
-- standard run + UAC elevation relaunch flow,
-- live log stream and health dashboard,
-- post-run quick analysis and incident timeline parsing.
-
-### Easy run (one-click GUI)
-
-- Double-click `Start-NetworkBeagle-GUI.cmd`
-- Or run:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File ".\Start-NetworkBeagle-GUI.ps1"
-```
-
-### Advanced run (PowerShell)
+### Run GUI from PowerShell
 
 ```powershell
 Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test-gui.ps1"
 ```
 
-For additional launcher details, see `network-stability-test-gui.md`.
-
-## CLI usage
-
-### Basic run
+### Run CLI directly
 
 ```powershell
 Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps1"
 ```
 
-### Common examples
+### Common CLI examples
 
-Run longer with detail logging:
+Longer run with detailed per-cycle narrative:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps1" `
@@ -117,7 +65,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps
   -DetailLog
 ```
 
-Enable TLS signal + JSON summary + zipped ISP evidence:
+Enable TLS signal and zip ISP evidence:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps1" `
@@ -133,67 +81,118 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test.ps
   -EnableLongLivedTcp -LongLivedTcpTarget "1.1.1.1:443"
 ```
 
-## Major parameters
+## What You Get from a Run
 
-Main script supports extensive tuning, including:
+- cycle-by-cycle CSV timeline (`network_log_<timestamp>.csv`)
+- human-readable report (`network_report_<timestamp>.txt`)
+- optional detail narrative log (`network_detail_<timestamp>.log`)
+- optional machine-readable summary (`network_summary_<timestamp>.json`)
+- optional ISP evidence folder (+ zip if enabled)
 
-- run timing (`DurationMinutes`, `IntervalSeconds`, monitoring mode),
-- probe controls (`ExternalIcmpHosts`, `DnsProbeName`, `TcpProbeHosts`),
-- fault behavior (`BurstOnFault`, `BurstCycles`, `MaxBurstSeconds`),
-- route behavior (`RoutingRefreshIntervalCycles`, `ProbeAddressFamily`),
-- optional modules (`SkipConfigAudit`, `SkipCableHints`, `SkipMultiNicCrossCheck`),
-- evidence controls (`SkipIspEvidencePacket`, `IspEvidenceZip`, `SkipJsonSummary`),
-- advanced probes (`EnableUdpProbe`, `EnableLongLivedTcp`, `EnableTlsProbe`),
-- diagnostics extras (`PerProbeTimestamps`, `AutoCaptureOnFault`).
+Output root behavior:
 
-Run this to inspect the full parameter set with ranges/defaults:
+1. Uses `OutputFolder` when valid/writable.
+2. Falls back to script directory.
+3. Then `Desktop\NetworkTest`.
+4. Then `%TEMP%\NetworkTest`.
+
+## Where To Look First After a Run
+
+- Open `gui-launcher-runs\...\logs\launcher.log` for launcher lifecycle events.
+- Open `stdout.log` / `stderr.log` for live process output.
+- Open the script output run folder for the final report and CSV.
+
+## Deep Dive (Architecture + Capabilities)
+
+This section is for users/operators who want to understand the full diagnostic model.
+
+### Layered diagnostic model
+
+Each cycle probes from local system outwards:
+
+1. Loopback and adapter state/counters
+2. Optional DNS timed probe
+3. Underlay LAN gateway (when available) and primary gateway ICMP
+4. External ICMP targets (multi-target, multi-attempt)
+5. Optional TCP/443 probes
+6. Optional TLS handshake probes
+
+On non-OK cycles, additional context modules can run:
+
+- config audit (IP/subnet/proxy/events/power/MTU checks)
+- cable/NIC hints
+- multi-NIC cross-check (parallel alternate adapter probing)
+- optional fault-triggered capture (`pktmon`/`netsh`)
+
+### Major capability groups
+
+**Probe and diagnosis**
+- ICMP reliability + latency/jitter over time
+- DNS responsiveness/failure tracking
+- TCP reachability and optional TLS signal
+- route/underlay awareness with refresh intervals
+- Wi-Fi signal snapshots
+- continuous UDP probe mode
+- long-lived TCP session probe
+- per-probe timestamping
+
+**Fault enrichment**
+- burst-on-fault interval strategy
+- config audit and cable suspect heuristics
+- strict/loose multi-NIC cross-check logic
+- automatic capture-on-fault with bounded limits
+
+**Reporting**
+- structured CSV + text report
+- optional JSON summary for downstream tooling
+- optional ISP evidence bundle/zip for escalation packages
+
+### GUI-specific behavior
+
+`network-stability-test-gui.ps1` provides:
+
+- full parameter surface for the CLI
+- live validation + dependent control enablement
+- presets and profile save/load
+- standard run and elevated relaunch flow
+- live health dashboard and incident timeline
+- CLI export and artifact path helpers
+
+For deeper GUI internals, see `network-stability-test-gui.md`.
+
+### Parameter model
+
+High-level parameter families:
+
+- run timing (`DurationMinutes`, `IntervalSeconds`, `MonitoringMode`)
+- probe targeting (`ExternalIcmpHosts`, `DnsProbeName`, `TcpProbeHosts`)
+- burst/fault behavior (`BurstOnFault`, `BurstCycles`, `MaxBurstSeconds`)
+- routing controls (`RoutingRefreshIntervalCycles`, `ProbeAddressFamily`)
+- optional modules (`SkipConfigAudit`, `SkipCableHints`, `SkipMultiNicCrossCheck`)
+- evidence output (`SkipIspEvidencePacket`, `IspEvidenceZip`, `SkipJsonSummary`)
+- advanced probes (`EnableUdpProbe`, `EnableLongLivedTcp`, `EnableTlsProbe`)
+- diagnostics extras (`PerProbeTimestamps`, `AutoCaptureOnFault`)
+
+See full script help for exact ranges/defaults:
 
 ```powershell
 Get-Help ".\network-stability-test.ps1" -Full
 ```
 
-## Output structure
+### Folder layout
 
-The script writes to:
-
-- `<OutputFolder>\runs\run_<timestamp>\...`
-
-When `OutputFolder` is not writable/empty, fallback order is:
-
-1. script directory,
-2. `Desktop\NetworkTest`,
-3. `%TEMP%\NetworkTest`.
-
-Typical run artifacts include:
-
-- `network_report_<timestamp>.txt`
-- `network_log_<timestamp>.csv`
-- `network_detail_<timestamp>.log` (when enabled)
-- `network_summary_<timestamp>.json` (unless disabled)
-- ISP evidence folder/zip (unless disabled)
-
-GUI launcher runs create an additional wrapper folder:
+GUI wrapper runs use:
 
 - `<OutputRoot>\gui-launcher-runs\run_<timestamp>\logs`
 - `<OutputRoot>\gui-launcher-runs\run_<timestamp>\script-output-root`
 
-## Project structure
+Script runs use:
 
-```text
-NetworkTest/
-  Start-NetworkBeagle-GUI.cmd         # One-click launcher for non-terminal users
-  Start-NetworkBeagle-GUI.ps1         # GUI preflight launcher
-  network-stability-test.ps1          # CLI entrypoint
-  network-stability-test-gui.ps1      # GUI entrypoint
-  lib/                                # Probe, routing, audit, reporting modules
-  gui/core/                           # GUI logic modules
-  gui/ui/layout.xaml                  # WPF layout
-  validation/gui_modular_smoke.ps1    # GUI parser/XAML smoke checks
-  tests/gui-state.tests.ps1           # Initial Pester coverage
-  tools/bundle-single-file.ps1        # Build single-file portable CLI script
-```
+- `<OutputFolder>\runs\run_<timestamp>\...`
 
 ## Quality and validation
+
+Run these when changing code:
 
 ### Smoke check
 
@@ -217,6 +216,22 @@ Invoke-ScriptAnalyzer -Path . -Recurse -Settings .\PSScriptAnalyzerSettings.psd1
 
 A GitHub Actions workflow is included in `.github/workflows/ci.yml` to run parse checks, analyzer, smoke validation, and tests on Windows.
 
+## Project structure
+
+```text
+NetworkTest/
+  Start-NetworkBeagle-GUI.cmd         # One-click launcher for non-terminal users
+  Start-NetworkBeagle-GUI.ps1         # GUI preflight launcher
+  network-stability-test.ps1          # CLI entrypoint
+  network-stability-test-gui.ps1      # GUI entrypoint
+  lib/                                # Probe, routing, audit, reporting modules
+  gui/core/                           # GUI logic modules
+  gui/ui/layout.xaml                  # WPF layout
+  validation/gui_modular_smoke.ps1    # GUI parser/XAML smoke checks
+  tests/gui-state.tests.ps1           # Pester coverage
+  tools/bundle-single-file.ps1        # Build single-file portable CLI script
+```
+
 ## Single-file bundle
 
 If you need to distribute without `lib/`, build a one-file variant:
@@ -226,6 +241,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\tools\bundle-single-file.
 ```
 
 This creates `network-stability-test.single.ps1` with inlined library modules.
+
+## Publishing and project health
+
+- License: `MIT` (see `LICENSE`)
+- Security policy: `SECURITY.md`
+- Contributing guide: `CONTRIBUTING.md`
+- Support policy: `SUPPORT.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Change history: `CHANGELOG.md`
 
 ## Operational notes
 
