@@ -295,6 +295,36 @@
             <TabItem Name="AdvancedTab" Header="Advanced">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="8">
+                        <GroupBox Header="Advanced workflow" Margin="0,0,0,8">
+                            <StackPanel Margin="8">
+                                <WrapPanel Margin="0,0,0,6">
+                                    <TextBlock Text="Filter" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBox Name="AdvancedFilter" Width="240" Margin="0,0,8,0" ToolTip="Filter advanced groups by keyword."/>
+                                    <CheckBox Name="AdvancedShowNonDefault" Content="Show non-default only" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Bundle" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <ComboBox Name="AdvancedBundleSelector" Width="220" Margin="0,0,8,0"/>
+                                    <Button Name="ApplyAdvancedBundle" Content="Apply bundle" Margin="0,0,8,0"/>
+                                    <Button Name="UndoApplyAdvanced" Content="Undo apply" Margin="0,0,8,0" IsEnabled="False"/>
+                                </WrapPanel>
+                                <WrapPanel Margin="0,0,0,6">
+                                    <Button Name="ResetAdvancedAll" Content="Reset all advanced" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedTiming" Content="Reset timing" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedSwitches" Content="Reset switches" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedPathMtu" Content="Reset Path MTU" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedUdp" Content="Reset UDP" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedLongTcp" Content="Reset Long TCP" Margin="0,0,8,0"/>
+                                    <Button Name="ResetAdvancedCapture" Content="Reset capture"/>
+                                </WrapPanel>
+                                <WrapPanel Margin="0,0,0,6">
+                                    <Button Name="CopyAdvancedSnippet" Content="Copy advanced snippet" Margin="0,0,8,0"/>
+                                    <Button Name="PasteAdvancedSnippet" Content="Paste advanced snippet" Margin="0,0,8,0"/>
+                                    <Button Name="AdvancedPreviewCliCommand" Content="Preview command" Margin="0,0,8,0"/>
+                                    <Button Name="AdvancedExportCliCommand" Content="Copy command"/>
+                                </WrapPanel>
+                                <TextBlock Name="AdvancedValidationStatus" Foreground="DarkOliveGreen" TextWrapping="Wrap" Text="Ready to run."/>
+                            </StackPanel>
+                        </GroupBox>
+
                         <GroupBox Name="RuntimeRulesGroup" Header="Safety limits and defaults" Margin="0,0,0,8">
                             <Grid Margin="8">
                                 <Grid.RowDefinitions>
@@ -412,11 +442,15 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <CheckBox Name="EnableLongLivedTcp" Grid.Column="0" Content="EnableLongLivedTcp" Margin="4"/>
-                                <TextBlock Grid.Column="1" Text="LongLivedTcpTarget (host:port)" VerticalAlignment="Center" Margin="4,0"/>
-                                <TextBox Name="LongLivedTcpTarget" Grid.Column="2" Margin="4"/>
-                                <TextBlock Grid.Column="3" Text="ReconnectBackoffSeconds" VerticalAlignment="Center" Margin="4,0"/>
-                                <TextBox Name="LongLivedTcpReconnectBackoffSeconds" Grid.Column="3" HorizontalAlignment="Right" Width="80" Margin="4"/>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <CheckBox Name="EnableLongLivedTcp" Grid.Row="0" Grid.Column="0" Content="EnableLongLivedTcp" Margin="4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="LongLivedTcpTarget (host:port)" VerticalAlignment="Center" Margin="4,0"/>
+                                <TextBox Name="LongLivedTcpTarget" Grid.Row="0" Grid.Column="3" Margin="4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="ReconnectBackoffSeconds" VerticalAlignment="Center" Margin="4,0"/>
+                                <TextBox Name="LongLivedTcpReconnectBackoffSeconds" Grid.Row="1" Grid.Column="3" Width="120" Margin="4"/>
                             </Grid>
                         </GroupBox>
 

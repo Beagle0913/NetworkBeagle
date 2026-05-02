@@ -207,6 +207,54 @@ function Get-NetworkDiagGuiStateSchema {
     }
 }
 
+function Get-NetworkDiagGuiAdvancedKeyGroups {
+    $schema = Get-NetworkDiagGuiStateSchema
+    $switches = @($schema.SwitchKeys | Where-Object {
+            $_ -notin @("BurstOnFault", "EnableUdpProbe", "EnableLongLivedTcp", "PerProbeTimestamps", "AutoCaptureOnFault")
+        })
+    return [ordered]@{
+        Timing = @(
+            "IcmpCountPerTarget", "IcmpTimeoutSeconds", "DnsTimeoutMs", "BurstOnFault",
+            "BurstIntervalSeconds", "BurstCycles", "MaxBurstSeconds", "GwIcmpPolicyConfirmCycles", "RoutingRefreshIntervalCycles"
+        )
+        Switches = $switches
+        PathMtu = @("PathMtuProbeTarget")
+        Udp = @("EnableUdpProbe", "UdpProbeTarget", "UdpProbeRateHz", "UdpProbePayloadBytes")
+        LongTcp = @("EnableLongLivedTcp", "LongLivedTcpTarget", "LongLivedTcpReconnectBackoffSeconds")
+        Capture = @("PerProbeTimestamps", "AutoCaptureOnFault", "AutoCaptureMethod", "AutoCaptureSeconds", "AutoCaptureMax")
+    }
+}
+
+function Get-NetworkDiagGuiAdvancedKeyAllowlist {
+    $keys = New-Object System.Collections.Generic.List[string]
+    $seen = @{}
+    $groups = Get-NetworkDiagGuiAdvancedKeyGroups
+    foreach ($g in $groups.Keys) {
+        foreach ($k in @($groups[$g])) {
+            if ($seen.ContainsKey($k)) { continue }
+            $seen[$k] = $true
+            $keys.Add([string]$k)
+        }
+    }
+    return @($keys)
+}
+
+function Project-NetworkDiagGuiStateToAdvancedKeys {
+    param([hashtable]$State)
+    if (-not $State) { return @{} }
+    $out = @{}
+    foreach ($k in (Get-NetworkDiagGuiAdvancedKeyAllowlist)) {
+        if (-not $State.ContainsKey($k)) { continue }
+        $v = $State[$k]
+        if ($v -is [System.Collections.IEnumerable] -and $v -isnot [string]) {
+            $out[$k] = @($v)
+        } else {
+            $out[$k] = $v
+        }
+    }
+    return $out
+}
+
 function Merge-NetworkDiagGuiState {
     param([hashtable]$Overrides)
 

@@ -66,6 +66,177 @@ function Show-NetworkDiagGuiOptionHelp {
     }
 }
 
+function Invoke-NetworkDiagGuiShowPreviewCommand {
+    $controls = $script:App.Ui.Controls
+    $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+    $state.OutputFolder = "<output-folder>"
+    $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+    [System.Windows.MessageBox]::Show($cmd, "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+}
+
+function Invoke-NetworkDiagGuiCopyCliCommand {
+    $controls = $script:App.Ui.Controls
+    $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+    $state.OutputFolder = "<output-folder>"
+    $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+    [System.Windows.Clipboard]::SetText($cmd)
+    Set-NetworkDiagGuiRunState -State "Idle" -Message "CLI command copied to clipboard."
+}
+
+function Update-NetworkDiagGuiAdvancedVisibility {
+    $controls = $script:App.Ui.Controls
+    if (-not $controls.ContainsKey("AdvancedTab")) { return }
+    $filter = if ($controls.ContainsKey("AdvancedFilter")) { [string]$controls.AdvancedFilter.Text.Trim().ToLowerInvariant() } else { "" }
+    $showNonDefault = if ($controls.ContainsKey("AdvancedShowNonDefault")) { [bool]$controls.AdvancedShowNonDefault.IsChecked } else { $false }
+    $groups = Get-NetworkDiagGuiAdvancedKeyGroups
+    $defaults = New-NetworkDiagGuiDefaultState
+    $state = $null
+    try { $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits } catch { $state = $null }
+
+    foreach ($groupName in $groups.Keys) {
+        foreach ($k in @($groups[$groupName])) {
+            if (-not $controls.ContainsKey($k)) { continue }
+            $ctl = $controls[$k]
+            if ($null -eq $ctl) { continue }
+            $visible = $true
+            if ($showNonDefault -and $null -ne $state) {
+                $curr = if ($state.ContainsKey($k)) { $state[$k] } else { $null }
+                $def = if ($defaults.ContainsKey($k)) { $defaults[$k] } else { $null }
+                $visible = ([string]$curr -ne [string]$def)
+            }
+            $ctl.Visibility = if ($visible) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+        }
+    }
+
+    $groupTerms = @{
+        RuntimeRulesGroup = @("runtime","rules","fallback","limits","defaults")
+        TimingGroup = @("timing","icmp","dns","burst","routing")
+        FeatureSwitchesGroup = @("switch","diagnostic","modules","tls","json","wifi","tcp","dns")
+        PathMtuGroup = @("path","mtu")
+        UdpGroup = @("udp","loss","micro")
+        LongTcpGroup = @("long","tcp","session","reconnect")
+        ProbeCaptureGroup = @("capture","timestamps","pktmon","netshtrace")
+        HelpGroup = @("help")
+    }
+
+    foreach ($groupName in @("RuntimeRulesGroup","TimingGroup","FeatureSwitchesGroup","PathMtuGroup","UdpGroup","LongTcpGroup","ProbeCaptureGroup","HelpGroup")) {
+        if (-not $controls.ContainsKey($groupName)) { continue }
+        $group = $controls[$groupName]
+        if ($null -eq $group) { continue }
+        $filterOk = $true
+        if ($filter) {
+            $hay = (([string]$group.Header) + " " + ((@($groupTerms[$groupName])) -join " ")).ToLowerInvariant()
+            $filterOk = $hay.Contains($filter)
+        }
+        $hasVisible = $true
+        if ($showNonDefault -and $groups.Contains($groupName.Replace("Group",""))) {
+            $hasVisible = $false
+            $section = $groupName.Replace("Group","")
+            foreach ($k in @($groups[$section])) {
+                if ($controls.ContainsKey($k) -and $null -ne $controls[$k] -and $controls[$k].Visibility -eq [System.Windows.Visibility]::Visible) {
+                    $hasVisible = $true
+                    break
+                }
+            }
+        }
+        $group.Visibility = if ($filterOk -and $hasVisible) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+    }
+}
+
+function Reset-NetworkDiagGuiAdvancedSection {
+    param([Parameter(Mandatory = $true)][string]$Section)
+    $controls = $script:App.Ui.Controls
+    $current = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+    $defaults = New-NetworkDiagGuiDefaultState
+    $groups = Get-NetworkDiagGuiAdvancedKeyGroups
+    $keys = @()
+    if ($Section -eq "All") {
+        $keys = Get-NetworkDiagGuiAdvancedKeyAllowlist
+    } elseif ($groups.Contains($Section)) {
+        $keys = @($groups[$Section])
+    }
+    foreach ($k in $keys) {
+        if ($defaults.ContainsKey($k)) {
+            $current[$k] = $defaults[$k]
+        }
+    }
+    $merged = Merge-NetworkDiagGuiState -Overrides $current
+    Set-NetworkDiagGuiControlState -Controls $controls -State $merged
+    Update-NetworkDiagDependentControls
+    Invoke-NetworkDiagGuiValidation
+}
+
+function Invoke-NetworkDiagGuiApplyAdvancedBundle {
+    $controls = $script:App.Ui.Controls
+    $selected = [string]$controls.AdvancedBundleSelector.SelectedItem
+    if (-not $selected) { return }
+    if (-not $script:App.Config.AdvancedBundleMap.Contains($selected)) { return }
+    $current = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+    $script:App.Run.LastAdvancedSnapshot = $current
+    $overrides = [hashtable]$script:App.Config.AdvancedBundleMap[$selected]
+    foreach ($k in $overrides.Keys) {
+        $current[$k] = $overrides[$k]
+    }
+    $merged = Merge-NetworkDiagGuiState -Overrides $current
+    Set-NetworkDiagGuiControlState -Controls $controls -State $merged
+    Update-NetworkDiagDependentControls
+    Invoke-NetworkDiagGuiValidation
+    if ($controls.ContainsKey("UndoApplyAdvanced")) { $controls.UndoApplyAdvanced.IsEnabled = $true }
+    Set-NetworkDiagGuiStatus -Text ("Applied advanced bundle: " + $selected)
+}
+
+function Invoke-NetworkDiagGuiUndoAdvancedBundle {
+    $controls = $script:App.Ui.Controls
+    $snap = if ($script:App.Run.ContainsKey("LastAdvancedSnapshot")) { $script:App.Run.LastAdvancedSnapshot } else { $null }
+    if (-not $snap) { return }
+    $merged = Merge-NetworkDiagGuiState -Overrides ([hashtable]$snap)
+    Set-NetworkDiagGuiControlState -Controls $controls -State $merged
+    Update-NetworkDiagDependentControls
+    Invoke-NetworkDiagGuiValidation
+    $script:App.Run.LastAdvancedSnapshot = $null
+    if ($controls.ContainsKey("UndoApplyAdvanced")) { $controls.UndoApplyAdvanced.IsEnabled = $false }
+    Set-NetworkDiagGuiStatus -Text "Restored previous advanced settings."
+}
+
+function Invoke-NetworkDiagGuiCopyAdvancedSnippet {
+    $state = Get-NetworkDiagGuiStateSnapshot
+    if (-not $state) { return }
+    $snippet = Project-NetworkDiagGuiStateToAdvancedKeys -State $state
+    [System.Windows.Clipboard]::SetText(($snippet | ConvertTo-Json -Depth 6))
+    Set-NetworkDiagGuiStatus -Text "Advanced snippet copied to clipboard."
+}
+
+function Invoke-NetworkDiagGuiPasteAdvancedSnippet {
+    $controls = $script:App.Ui.Controls
+    $raw = [System.Windows.Clipboard]::GetText()
+    if (-not $raw) { return }
+    $obj = ConvertTo-NetworkDiagHashtable -InputObject ($raw | ConvertFrom-Json)
+    if ($obj.ContainsKey("schemaVersion") -and $obj.ContainsKey("state")) {
+        $obj = ConvertTo-NetworkDiagHashtable -InputObject $obj.state
+    }
+    $allow = @{}
+    foreach ($k in (Get-NetworkDiagGuiAdvancedKeyAllowlist)) { $allow[$k] = $true }
+    $over = @{}
+    $ignored = 0
+    foreach ($k in $obj.Keys) {
+        if ($allow.ContainsKey([string]$k)) {
+            $over[[string]$k] = $obj[$k]
+        } else {
+            $ignored++
+        }
+    }
+    $current = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+    foreach ($k in $over.Keys) { $current[$k] = $over[$k] }
+    $merged = Merge-NetworkDiagGuiState -Overrides $current
+    Set-NetworkDiagGuiControlState -Controls $controls -State $merged
+    Update-NetworkDiagDependentControls
+    Invoke-NetworkDiagGuiValidation
+    if ($ignored -gt 0 -and $controls.ContainsKey("OptionHelpText")) {
+        $controls.OptionHelpText.Text = "Pasted advanced snippet; ignored $ignored unsupported key(s)."
+    }
+    Set-NetworkDiagGuiStatus -Text "Advanced snippet pasted from clipboard."
+}
+
 function Set-NetworkDiagGuiExperienceMode {
     $controls = $script:App.Ui.Controls
     $selected = if ($controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "Beginner (guided)" }
@@ -120,6 +291,38 @@ function Register-NetworkDiagGuiEvents {
     $controls.EnableUdpProbe.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
     $controls.EnableLongLivedTcp.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
     $controls.AutoCaptureOnFault.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
+    if ($controls.ContainsKey("AdvancedFilter")) { $controls.AdvancedFilter.Add_TextChanged({ Update-NetworkDiagGuiAdvancedVisibility }) }
+    if ($controls.ContainsKey("AdvancedShowNonDefault")) { $controls.AdvancedShowNonDefault.Add_Click({ Update-NetworkDiagGuiAdvancedVisibility }) }
+    if ($controls.ContainsKey("ApplyAdvancedBundle")) { $controls.ApplyAdvancedBundle.Add_Click({ Invoke-NetworkDiagGuiApplyAdvancedBundle }) }
+    if ($controls.ContainsKey("UndoApplyAdvanced")) { $controls.UndoApplyAdvanced.Add_Click({ Invoke-NetworkDiagGuiUndoAdvancedBundle }) }
+    if ($controls.ContainsKey("ResetAdvancedAll")) {
+        $controls.ResetAdvancedAll.Add_Click({
+            $ok = [System.Windows.MessageBox]::Show("Reset all advanced settings to defaults?", "Reset advanced", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+            if ($ok -eq [System.Windows.MessageBoxResult]::Yes) { Reset-NetworkDiagGuiAdvancedSection -Section "All" }
+        })
+    }
+    if ($controls.ContainsKey("ResetAdvancedTiming")) { $controls.ResetAdvancedTiming.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "Timing" }) }
+    if ($controls.ContainsKey("ResetAdvancedSwitches")) { $controls.ResetAdvancedSwitches.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "Switches" }) }
+    if ($controls.ContainsKey("ResetAdvancedPathMtu")) { $controls.ResetAdvancedPathMtu.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "PathMtu" }) }
+    if ($controls.ContainsKey("ResetAdvancedUdp")) { $controls.ResetAdvancedUdp.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "Udp" }) }
+    if ($controls.ContainsKey("ResetAdvancedLongTcp")) { $controls.ResetAdvancedLongTcp.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "LongTcp" }) }
+    if ($controls.ContainsKey("ResetAdvancedCapture")) { $controls.ResetAdvancedCapture.Add_Click({ Reset-NetworkDiagGuiAdvancedSection -Section "Capture" }) }
+    if ($controls.ContainsKey("CopyAdvancedSnippet")) { $controls.CopyAdvancedSnippet.Add_Click({ Invoke-NetworkDiagGuiCopyAdvancedSnippet }) }
+    if ($controls.ContainsKey("PasteAdvancedSnippet")) { $controls.PasteAdvancedSnippet.Add_Click({ Invoke-NetworkDiagGuiPasteAdvancedSnippet }) }
+    if ($controls.ContainsKey("AdvancedPreviewCliCommand")) {
+        $controls.AdvancedPreviewCliCommand.Add_Click({
+            try { Invoke-NetworkDiagGuiShowPreviewCommand } catch {
+                [System.Windows.MessageBox]::Show("Failed to preview command: $($_.Exception.Message)", "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+            }
+        })
+    }
+    if ($controls.ContainsKey("AdvancedExportCliCommand")) {
+        $controls.AdvancedExportCliCommand.Add_Click({
+            try { Invoke-NetworkDiagGuiCopyCliCommand } catch {
+                [System.Windows.MessageBox]::Show("Failed to copy command: $($_.Exception.Message)", "Copy command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+            }
+        })
+    }
 
     $controls.BrowseOutputRoot.Add_Click({
         $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -187,10 +390,7 @@ function Register-NetworkDiagGuiEvents {
     if ($controls.ContainsKey("PreviewCliCommand") -and $null -ne $controls.PreviewCliCommand) {
         $controls.PreviewCliCommand.Add_Click({
             try {
-                $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
-                $state.OutputFolder = "<output-folder>"
-                $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
-                [System.Windows.MessageBox]::Show($cmd, "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+                Invoke-NetworkDiagGuiShowPreviewCommand
             } catch {
                 [System.Windows.MessageBox]::Show("Failed to preview command: $($_.Exception.Message)", "Preview command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
             }
@@ -213,11 +413,7 @@ function Register-NetworkDiagGuiEvents {
 
     $controls.ExportCliCommand.Add_Click({
         try {
-            $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
-            $state.OutputFolder = "<output-folder>"
-            $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
-            [System.Windows.Clipboard]::SetText($cmd)
-            Set-NetworkDiagGuiRunState -State "Idle" -Message "CLI command copied to clipboard."
+            Invoke-NetworkDiagGuiCopyCliCommand
         } catch {
             [System.Windows.MessageBox]::Show("Failed to export CLI command: $($_.Exception.Message)", "Copy CLI command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
         }
@@ -386,6 +582,7 @@ function Register-NetworkDiagGuiEvents {
         $sel = if ($controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "" }
         Set-NetworkDiagGuiStatus -Text ("Experience mode: " + $sel)
     })
+    Update-NetworkDiagGuiAdvancedVisibility
 
     $script:App.Ui.Window.Add_KeyDown({
         param($sender, $eventArgs)

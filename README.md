@@ -12,6 +12,7 @@ NetworkBeagle helps you collect reliable evidence over time instead of relying o
 - [Quick Start](#quick-start)
 - [What NetworkBeagle Does](#what-networkbeagle-does)
 - [Requirements](#requirements)
+- [Supported and Not Supported](#supported-and-not-supported)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Output and Evidence Files](#output-and-evidence-files)
@@ -77,6 +78,27 @@ NetworkBeagle is designed to answer practical questions:
 - PowerShell: 5.1 or newer
 - Privileges: standard user works; admin is recommended for deepest diagnostics
 
+## Supported and Not Supported
+
+### Capability matrix
+
+| Capability | Standard user | Administrator |
+|---|---:|---:|
+| Core ICMP diagnostics (loopback/gateway/external) | Supported | Supported |
+| DNS/TCP/TLS probes | Supported | Supported |
+| Basic report/CSV outputs | Supported | Supported |
+| Strict multi-NIC pinning behavior | Limited | Supported |
+| Auto-capture on fault (`pktmon` / `netshtrace`) | Limited | Supported |
+| Fullest escalation evidence fidelity | Limited | Supported |
+
+### Platform support
+
+| Area | Status | Notes |
+|---|---|---|
+| Windows + PowerShell 5.1+ | Supported | Primary target platform |
+| Non-Windows environments | Not supported | Scripts and GUI are Windows-specific |
+| Local administrator rights | Optional | Recommended for deeper diagnostics |
+
 ## Installation
 
 No installer is required.
@@ -126,6 +148,17 @@ Show full parameter help:
 ```powershell
 Get-Help ".\network-stability-test.ps1" -Full
 ```
+
+### When to choose GUI vs CLI
+
+| Need | Choose GUI | Choose CLI |
+|---|---:|---:|
+| Fast guided run with presets | Yes | No |
+| Non-technical handoff workflow | Yes | No |
+| Repeatable automation / scripting | No | Yes |
+| CI or scheduled tasks | No | Yes |
+| Full interactive visibility while running | Yes | No |
+| Command-level parameter composability | Limited | Yes |
 
 ## Output and Evidence Files
 
@@ -221,6 +254,13 @@ NetworkBeagle/
 - Support: [`SUPPORT.md`](SUPPORT.md)
 - Code of conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+
+## Visual assets pending
+
+Planned follow-up documentation additions:
+
+- GUI screenshots for Setup, Live Run, and Results tabs
+- Short GIF(s) for first-run flow and support bundle workflow
 
 ## License
 

@@ -39,7 +39,7 @@ jobs:
           Set-StrictMode -Version Latest
           $ErrorActionPreference = "Stop"
           Install-Module PSScriptAnalyzer -RequiredVersion 1.24.0 -Scope CurrentUser -Force -AllowClobber
-          Install-Module Pester -RequiredVersion 4.10.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck
 
       - name: Run PSScriptAnalyzer
         shell: powershell
@@ -68,16 +68,30 @@ jobs:
           $coverageTargets = @(
             ".\gui\core\state.ps1",
             ".\gui\core\validation.ps1",
-            ".\lib\report.ps1"
+            ".\lib\report.ps1",
+            ".\lib\cycle.ps1",
+            ".\lib\probes.ps1",
+            ".\lib\routing.ps1",
+            ".\lib\host-port.ps1"
           )
           $result = Invoke-Pester -Path .\tests -PassThru -CodeCoverage $coverageTargets
           if ($result.FailedCount -gt 0) {
             throw "Pester reported $($result.FailedCount) failing test(s)."
           }
-          $analyzed = [double]$result.CodeCoverage.NumberOfCommandsAnalyzed
-          $missed = [double]@($result.CodeCoverage.MissedCommands).Count
+          $analyzed = 0.0
+          $missed = 0.0
+          if ($null -ne $result.CodeCoverage) {
+            if ($result.CodeCoverage.PSObject.Properties.Name -contains "NumberOfCommandsAnalyzed") {
+              $analyzed = [double]$result.CodeCoverage.NumberOfCommandsAnalyzed
+            } elseif ($result.CodeCoverage.PSObject.Properties.Name -contains "AnalyzedCommands") {
+              $analyzed = [double]@($result.CodeCoverage.AnalyzedCommands).Count
+            }
+            if ($result.CodeCoverage.PSObject.Properties.Name -contains "MissedCommands") {
+              $missed = [double]@($result.CodeCoverage.MissedCommands).Count
+            }
+          }
           $coverage = if ($analyzed -gt 0) { (1.0 - ($missed / $analyzed)) * 100.0 } else { 0.0 }
           Write-Host ("Code coverage (targeted files): " + [math]::Round($coverage, 2) + "%")
-          if ($coverage -lt 35.0) {
-            throw "Pester code coverage on targeted files is below threshold (35%)."
+          if ($coverage -lt 55.0) {
+            throw "Pester code coverage on targeted files is below threshold (55%)."
           }

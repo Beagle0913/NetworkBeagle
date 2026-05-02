@@ -2,6 +2,7 @@
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+if ((Get-Module Pester).Version.Major -lt 5) { . (Join-Path $PSScriptRoot "pester5-compat.ps1") }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $projectRoot "lib\report.ps1")
@@ -16,23 +17,23 @@ Describe "Report helpers" {
             -IncludeAutoCapture:$true `
             -IncludePerProbeTimestamps:$true
 
-        ($manifest -join ",") | Should Match "Ext1_ms"
-        ($manifest -join ",") | Should Match "TLS_CF_ms"
-        ($manifest -join ",") | Should Match "Udp_PktsSent_d"
-        ($manifest -join ",") | Should Match "TcpSess_State"
-        ($manifest -join ",") | Should Match "AutoCap_State"
-        ($manifest -join ",") | Should Match "Ext1_t_ms"
+        ($manifest -join ",") | Should -Match "Ext1_ms"
+        ($manifest -join ",") | Should -Match "TLS_CF_ms"
+        ($manifest -join ",") | Should -Match "Udp_PktsSent_d"
+        ($manifest -join ",") | Should -Match "TcpSess_State"
+        ($manifest -join ",") | Should -Match "AutoCap_State"
+        ($manifest -join ",") | Should -Match "Ext1_t_ms"
     }
 
     It "fills missing manifest values with empty fields" {
         $cols = @("Timestamp", "Verdict", "Dns_ms")
         $line = ConvertTo-NetworkDiagCsvLineFromManifest -ColumnNames $cols -Values @{ Timestamp = "2026-05-02"; Verdict = "OK" }
-        $line | Should Be '"2026-05-02","OK",""'
+        $line | Should -Be '"2026-05-02","OK",""'
     }
 
     It "formats DNS section when probe is disabled" {
         $text = Format-NetworkDiagDnsResolutionSection -S @{ DnsFailCycles = 0 } -Den 1 -DnsName "example.com" -DnsCapMs 3000 -SkipDns:$true
-        $text | Should Match "DNS probe was disabled"
+        $text | Should -Match "DNS probe was disabled"
     }
 
     It "includes monitoring metadata in run config section" {
@@ -100,9 +101,9 @@ Describe "Report helpers" {
             IspEvidenceZip = $false
         }
         $section = Build-NetworkDiagRunConfigSection -S $s -R $r
-        $section | Should Match "Monitoring mode:\s+LongRun"
-        $section | Should Match "Heartbeat cadence:\s+every 15 min"
-        $section | Should Match "Partial snapshots:\s+every 60 min"
+        $section | Should -Match "Monitoring mode:\s+LongRun"
+        $section | Should -Match "Heartbeat cadence:\s+every 15 min"
+        $section | Should -Match "Partial snapshots:\s+every 60 min"
     }
 
     It "describes TLS trust-store validation in TLS section" {
@@ -116,6 +117,6 @@ Describe "Report helpers" {
             EnableTlsProbe = $true
         }
         $section = Build-NetworkDiagTlsProbeSection -S $s -R $r
-        $section | Should Match "OS trust store"
+        $section | Should -Match "OS trust store"
     }
 }

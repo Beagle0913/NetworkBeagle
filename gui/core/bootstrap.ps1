@@ -16,6 +16,7 @@ function Start-NetworkDiagGuiApp {
     $defaultState = New-NetworkDiagGuiDefaultState
     if (-not $defaultState.OutputRoot) { $defaultState.OutputRoot = Get-NetworkDiagGuiDefaultOutputRoot }
     $presetMap = Get-NetworkDiagGuiPresets -BaseState $defaultState
+    $advancedBundleMap = Get-NetworkDiagGuiAdvancedBundles -BaseState $defaultState
     $goalProfiles = Get-NetworkDiagGuiGoalProfiles -BaseState $defaultState
 
     if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
@@ -31,6 +32,13 @@ function Start-NetworkDiagGuiApp {
         [void]$controls.PresetSelector.Items.Add($presetName)
     }
     if ($controls.PresetSelector.Items.Count -gt 0) { $controls.PresetSelector.SelectedIndex = 0 }
+    if ($controls.ContainsKey("AdvancedBundleSelector") -and $null -ne $controls.AdvancedBundleSelector) {
+        $controls.AdvancedBundleSelector.Items.Clear()
+        foreach ($bundleName in $advancedBundleMap.Keys) {
+            [void]$controls.AdvancedBundleSelector.Items.Add($bundleName)
+        }
+        if ($controls.AdvancedBundleSelector.Items.Count -gt 0) { $controls.AdvancedBundleSelector.SelectedIndex = 0 }
+    }
 
     $isAdmin = Test-NetworkDiagGuiIsAdmin
     $controls.AdminBanner.Text = if ($isAdmin) {
@@ -137,6 +145,23 @@ function Start-NetworkDiagGuiApp {
         CompareRuns = "Compare run A and run B."
         RunComparisonText = "Comparison output across selected runs."
         SetupValidationStatus = "Current run-readiness status."
+        AdvancedFilter = "Filter advanced groups by keyword."
+        AdvancedShowNonDefault = "Hide advanced controls that are still at default values."
+        AdvancedBundleSelector = "Choose a partial advanced settings bundle."
+        ApplyAdvancedBundle = "Apply selected advanced bundle; only touches bundle keys."
+        UndoApplyAdvanced = "Undo the last advanced bundle apply action."
+        ResetAdvancedAll = "Reset all advanced settings to defaults."
+        ResetAdvancedTiming = "Reset timing and burst advanced settings."
+        ResetAdvancedSwitches = "Reset advanced diagnostic switch settings."
+        ResetAdvancedPathMtu = "Reset Path MTU advanced settings."
+        ResetAdvancedUdp = "Reset UDP probe advanced settings."
+        ResetAdvancedLongTcp = "Reset long-lived TCP advanced settings."
+        ResetAdvancedCapture = "Reset capture and timestamp advanced settings."
+        CopyAdvancedSnippet = "Copy advanced-only settings JSON to clipboard."
+        PasteAdvancedSnippet = "Paste advanced-only settings JSON from clipboard."
+        AdvancedValidationStatus = "Validation status mirrored for Advanced tab workflows."
+        AdvancedPreviewCliCommand = "Preview PowerShell command from current settings."
+        AdvancedExportCliCommand = "Copy PowerShell command from current settings."
     }
     foreach ($name in $tooltips.Keys) {
         if ($controls.ContainsKey($name) -and $null -ne $controls[$name]) {
@@ -155,6 +180,7 @@ function Start-NetworkDiagGuiApp {
         Config = @{
             Limits = $limits
             PresetMap = $presetMap
+            AdvancedBundleMap = $advancedBundleMap
             GoalProfiles = $goalProfiles
             OptionHelpMap = $tooltips
         }
@@ -169,12 +195,14 @@ function Start-NetworkDiagGuiApp {
             CurrentLogsFolder = ""
             CurrentLaunchConfigPath = ""
             CurrentGuiStatePath = ""
+            CurrentRunMetadataPath = ""
             CurrentProcess = $null
             ValidationHasErrors = $false
             State = "Idle"
             StopRequested = $false
             RecentRuns = [System.Collections.Generic.List[hashtable]]::new()
             TransitionHistory = [System.Collections.Generic.List[string]]::new()
+            LastAdvancedSnapshot = $null
         }
         Health = @{}
         Hooks = New-NetworkDiagGuiHooks

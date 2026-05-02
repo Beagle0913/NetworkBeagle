@@ -1,36 +1,28 @@
+if (-not (Get-Command -Name "Split-NetworkDiagHostPortShared" -ErrorAction SilentlyContinue)) {
+    try {
+        $sharedHostPortPath = Join-Path (Join-Path (Split-Path -Path $PSScriptRoot -Parent) "..\lib") "host-port.ps1"
+        if (Test-Path -LiteralPath $sharedHostPortPath -PathType Leaf) {
+            . $sharedHostPortPath
+        }
+    } catch { }
+}
+
 function Test-NetworkDiagGuiHostToken {
     param([string]$Value)
-    if (-not $Value) { return $false }
-    $token = $Value.Trim()
-    if (-not $token) { return $false }
-
-    $ip = $null
-    if ([System.Net.IPAddress]::TryParse($token, [ref]$ip)) {
-        return $true
+    if (Get-Command -Name "Test-NetworkDiagHostTokenShared" -ErrorAction SilentlyContinue) {
+        return [bool](Test-NetworkDiagHostTokenShared -Value $Value)
     }
-
-    $kind = [System.Uri]::CheckHostName($token)
-    return ($kind -eq [System.UriHostNameType]::Dns)
+    if (-not $Value) { return $false }
+    return [bool]([System.Uri]::CheckHostName($Value.Trim()) -eq [System.UriHostNameType]::Dns)
 }
 
 function Test-NetworkDiagGuiHostPortToken {
     param([string]$Value)
-    if (-not $Value) { return $false }
-    $token = $Value.Trim()
-    if (-not $token) { return $false }
-    $hostToken = ""
-    $port = 0
-    if ($token -match "^\[(?<host>[^\]]+)\]:(?<port>\d{1,5})$") {
-        $hostToken = [string]$Matches.host
-        $port = [int]$Matches.port
-    } elseif ($token -match "^(?<host>[^:]+):(?<port>\d{1,5})$") {
-        $hostToken = [string]$Matches.host
-        $port = [int]$Matches.port
-    } else {
-        return $false
+    if (Get-Command -Name "Test-NetworkDiagHostPortTokenShared" -ErrorAction SilentlyContinue) {
+        return [bool](Test-NetworkDiagHostPortTokenShared -Value $Value)
     }
-    if ($port -lt 1 -or $port -gt 65535) { return $false }
-    return (Test-NetworkDiagGuiHostToken -Value $hostToken)
+    if (-not $Value) { return $false }
+    return [bool]($Value.Trim() -match "^(?<host>[^:]+):(?<port>\d{1,5})$")
 }
 
 function Test-NetworkDiagGuiCanWriteDirectory {
@@ -198,7 +190,14 @@ function Invoke-NetworkDiagGuiValidation {
         $script:App.Run.ValidationHasErrors = $true
         $controls.ValidationText.Foreground = "DarkRed"
         $controls.ValidationText.Text = "Please fix this setting: $($_.Exception.Message)"
+        if ($controls.ContainsKey("AdvancedValidationStatus")) {
+            $controls.AdvancedValidationStatus.Foreground = "DarkRed"
+            $controls.AdvancedValidationStatus.Text = "Please fix this setting: $($_.Exception.Message)"
+        }
         Update-NetworkDiagGuiActionButtons
+        if (Get-Command -Name "Update-NetworkDiagGuiAdvancedVisibility" -ErrorAction SilentlyContinue) {
+            Update-NetworkDiagGuiAdvancedVisibility
+        }
         return
     }
 
@@ -248,6 +247,18 @@ function Invoke-NetworkDiagGuiValidation {
             $controls.SetupValidationStatus.Foreground = "DarkGreen"
         }
     }
+    if ($controls.ContainsKey("AdvancedValidationStatus")) {
+        if ($validation.Errors.Count -gt 0) {
+            $controls.AdvancedValidationStatus.Text = "Cannot start test: " + (($validation.Issues | Where-Object { $_.Severity -eq "Error" } | ForEach-Object { $_.Message }) -join " | ")
+            $controls.AdvancedValidationStatus.Foreground = "DarkRed"
+        } elseif ($validation.Warnings.Count -gt 0) {
+            $controls.AdvancedValidationStatus.Text = "Ready with warnings: " + (($validation.Issues | Where-Object { $_.Severity -eq "Warning" } | ForEach-Object { $_.Message }) -join " | ")
+            $controls.AdvancedValidationStatus.Foreground = "DarkGoldenrod"
+        } else {
+            $controls.AdvancedValidationStatus.Text = "Ready to run."
+            $controls.AdvancedValidationStatus.Foreground = "DarkGreen"
+        }
+    }
     if ($controls.ContainsKey("FixUseDefaultDns")) {
         $dnsReq = @($validation.Issues | Where-Object { $_.Id -eq "DnsNameRequired" }).Count -gt 0
         $burstReq = @($validation.Issues | Where-Object { $_.Id -eq "BurstIntervalRule" }).Count -gt 0
@@ -256,4 +267,7 @@ function Invoke-NetworkDiagGuiValidation {
         $controls.FixAutoTiming.Visibility = if ($burstReq) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
     }
     Update-NetworkDiagGuiActionButtons
+    if (Get-Command -Name "Update-NetworkDiagGuiAdvancedVisibility" -ErrorAction SilentlyContinue) {
+        Update-NetworkDiagGuiAdvancedVisibility
+    }
 }

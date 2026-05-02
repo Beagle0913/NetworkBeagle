@@ -130,6 +130,39 @@ function Get-NetworkDiagGuiGoalProfiles {
     }
 }
 
+function Get-NetworkDiagGuiAdvancedBundles {
+    param([hashtable]$BaseState)
+    if (-not $BaseState) { $BaseState = New-NetworkDiagGuiDefaultState }
+    return [ordered]@{
+        "Evidence capture on fault" = @{
+            AutoCaptureOnFault = $true
+            AutoCaptureMethod = "pktmon"
+            AutoCaptureSeconds = 20
+            AutoCaptureMax = 2
+            DetailLog = $true
+        }
+        "Micro-loss hunting (UDP)" = @{
+            EnableUdpProbe = $true
+            UdpProbeRateHz = 30
+            UdpProbePayloadBytes = 64
+            BurstOnFault = $true
+        }
+        "Long-lived TCP watch" = @{
+            EnableLongLivedTcp = $true
+            LongLivedTcpReconnectBackoffSeconds = 5
+        }
+        "Routing churn focus" = @{
+            RoutingRefreshIntervalCycles = 20
+            GwIcmpPolicyConfirmCycles = 4
+        }
+        "Hands-off CSV/JSON" = @{
+            SkipJsonSummary = $false
+            LegacyCsvShape = $false
+            DetailLog = $true
+        }
+    }
+}
+
 function Apply-NetworkDiagGuiGoalPreset {
     param(
         [Parameter(Mandatory = $true)][string]$GoalId,

@@ -332,7 +332,7 @@ $script:NetworkDiagWifiSnapshotMinSeconds = 15
 
 # >>> NETDIAG_BUNDLE_DOTSOURCE_BEGIN <<<
 $libRoot = Join-Path $PSScriptRoot 'lib'
-foreach ($f in @('common.ps1', 'latency.ps1', 'probes.ps1', 'routing.ps1', 'report.ps1', 'cycle.ps1', 'config-audit.ps1', 'cable-hints.ps1', 'multinic.ps1', 'wifi-signal.ps1', 'isp-bundle.ps1', 'summary-json.ps1', 'udp-probe.ps1', 'tcp-session.ps1', 'auto-capture.ps1')) {
+foreach ($f in @('common.ps1', 'host-port.ps1', 'latency.ps1', 'probes.ps1', 'routing.ps1', 'report.ps1', 'cycle.ps1', 'config-audit.ps1', 'cable-hints.ps1', 'multinic.ps1', 'wifi-signal.ps1', 'isp-bundle.ps1', 'summary-json.ps1', 'udp-probe.ps1', 'tcp-session.ps1', 'auto-capture.ps1')) {
     $p = Join-Path $libRoot $f
     if (-not (Test-Path -LiteralPath $p)) {
         Write-Host "ERROR: Missing library file: $p (keep lib/ next to the entrypoint or run tools\bundle-single-file.ps1 to produce a portable copy)." -ForegroundColor Red
@@ -370,39 +370,7 @@ if ($BurstOnFault -and $BurstIntervalSeconds -ge $IntervalSeconds) {
 
 function Split-NetworkDiagHostPort {
     param([Parameter(Mandatory = $true)][string]$Raw, [int]$DefaultPort = 0)
-    $s = [string]$Raw.Trim()
-    if (-not $s) { throw "empty host:port" }
-    if ($s.StartsWith("[")) {
-        $end = $s.IndexOf("]")
-        if ($end -lt 2) { throw "malformed bracketed IPv6 literal: $Raw" }
-        $h = $s.Substring(1, $end - 1)
-        if (-not $h) { throw "empty host in '$Raw'" }
-        $rest = $s.Substring($end + 1)
-        $p = 0
-        if ($rest.StartsWith(":")) {
-            if (-not [int]::TryParse($rest.Substring(1), [ref]$p)) { throw "invalid port in '$Raw'" }
-        } else {
-            $p = [int]$DefaultPort
-        }
-        if ($p -lt 1 -or $p -gt 65535) { throw "port out of range in '$Raw' (must be 1..65535)" }
-        return @{ Host = $h; Port = $p }
-    }
-    $idx = $s.LastIndexOf(":")
-    if ($idx -lt 0) {
-        $p = [int]$DefaultPort
-        if ($p -le 0) { throw "no port in '$Raw' and no default" }
-        if ($p -lt 1 -or $p -gt 65535) { throw "default port out of range ($p); must be 1..65535" }
-        return @{ Host = $s; Port = $p }
-    }
-    $h = $s.Substring(0, $idx)
-    if (-not $h) { throw "empty host in '$Raw'" }
-    $portStr = $s.Substring($idx + 1)
-    $p = 0
-    if (-not [int]::TryParse($portStr, [ref]$p)) {
-        throw "invalid port in '$Raw'"
-    }
-    if ($p -lt 1 -or $p -gt 65535) { throw "port out of range in '$Raw' (must be 1..65535)" }
-    return @{ Host = $h; Port = [int]$p }
+    return Split-NetworkDiagHostPortShared -Raw $Raw -DefaultPort $DefaultPort
 }
 
 $udpHostPort = $null

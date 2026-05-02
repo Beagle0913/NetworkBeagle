@@ -1,0 +1,93 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish (example: v1.2.3)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: tag
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ github.event.inputs.release_tag }}".Trim()
+          } else {
+            $tag = "${{ github.ref_name }}".Trim()
+          }
+          if (-not $tag) { throw "Release tag is required." }
+          if ($tag -notmatch "^v\d+\.\d+\.\d+([\-+].*)?$") {
+            throw "Tag '$tag' does not match expected semantic format vX.Y.Z[-suffix]."
+          }
+          "release_tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Validate changelog mentions tag
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ steps.tag.outputs.release_tag }}"
+          $changelog = Get-Content -LiteralPath ".\CHANGELOG.md" -Raw -Encoding UTF8
+          if ($changelog -notmatch [regex]::Escape($tag)) {
+            throw "CHANGELOG.md does not mention release tag $tag."
+          }
+
+      - name: Build single-file bundle
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          powershell -NoProfile -ExecutionPolicy Bypass -File ".\tools\bundle-single-file.ps1"
+          if (-not (Test-Path -LiteralPath ".\network-stability-test.single.ps1" -PathType Leaf)) {
+            throw "Bundle output network-stability-test.single.ps1 was not generated."
+          }
+
+      - name: Build release archive
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ steps.tag.outputs.release_tag }}"
+          $outDir = ".\release-artifacts"
+          if (-not (Test-Path -LiteralPath $outDir -PathType Container)) {
+            [void](New-Item -ItemType Directory -Path $outDir -Force)
+          }
+          $zipPath = Join-Path $outDir ("networkbeagle_" + $tag + "_windows.zip")
+          if (Test-Path -LiteralPath $zipPath -PathType Leaf) { Remove-Item -LiteralPath $zipPath -Force }
+          Compress-Archive -Path @(
+            ".\network-stability-test.ps1",
+            ".\network-stability-test.single.ps1",
+            ".\Start-NetworkBeagle-GUI.cmd",
+            ".\Start-NetworkBeagle-GUI.ps1",
+            ".\README.md",
+            ".\LICENSE"
+          ) -DestinationPath $zipPath -CompressionLevel Optimal -Force
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            network-stability-test.single.ps1
+            release-artifacts/*.zip

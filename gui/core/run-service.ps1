@@ -55,6 +55,65 @@ function Write-NetworkDiagGuiLogLine {
     Add-Content -LiteralPath $Path -Value $line -Encoding UTF8
 }
 
+function New-NetworkDiagGuiRunMetadata {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$State,
+        [Parameter(Mandatory = $true)][hashtable]$Paths,
+        [bool]$PreferAdmin = $false
+    )
+    $switches = [ordered]@{}
+    foreach ($k in @(
+        "RequireEthernet", "SkipTcpProbe", "DetailLog", "LegacyCsvShape", "SkipDnsProbe",
+        "BurstOnFault", "SkipGwIcmpPolicyAdaptation", "PinExternalIcmpToResolvedIp",
+        "SkipConfigAudit", "SkipCableHints", "SkipMultiNicCrossCheck", "SkipIspEvidencePacket",
+        "IspEvidenceZip", "SkipWifiSignal", "EnableTlsProbe", "SkipJsonSummary", "SelfTest",
+        "EnableUdpProbe", "EnableLongLivedTcp", "PerProbeTimestamps", "AutoCaptureOnFault"
+    )) {
+        if ($State.ContainsKey($k)) { $switches[$k] = [bool]$State[$k] }
+    }
+    return [ordered]@{
+        schemaVersion = 1
+        startedAt = (Get-Date).ToString("o")
+        startMode = if ($PreferAdmin) { "prefer_admin" } else { "standard" }
+        guiIsAdmin = [bool]$script:App.Context.IsAdminGui
+        selectedGoalText = if ($script:App.Ui.Controls.ContainsKey("CurrentGoalText")) { [string]$script:App.Ui.Controls.CurrentGoalText.Text } else { "" }
+        monitoringMode = [string]$State.MonitoringMode
+        probeAddressFamily = [string]$State.ProbeAddressFamily
+        durationMinutes = [int]$State.DurationMinutes
+        intervalSeconds = [int]$State.IntervalSeconds
+        outputRoot = [string]$State.OutputRoot
+        launcherRunRoot = [string]$Paths.LauncherRunRoot
+        logsFolder = [string]$Paths.LogsFolder
+        scriptOutputRoot = [string]$Paths.ScriptOutputRoot
+        keySwitches = $switches
+        status = "running"
+        exitCode = $null
+        finishedAt = ""
+    }
+}
+
+function Write-NetworkDiagGuiRunMetadata {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][hashtable]$Metadata
+    )
+    [System.IO.File]::WriteAllText($Path, ($Metadata | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+}
+
+function Update-NetworkDiagGuiRunMetadataCompletion {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$ExitCode,
+        [string]$FinalState
+    )
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $obj = ConvertTo-NetworkDiagHashtable -InputObject (Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json)
+    $obj.exitCode = $ExitCode
+    $obj.status = $FinalState
+    $obj.finishedAt = (Get-Date).ToString("o")
+    Write-NetworkDiagGuiRunMetadata -Path $Path -Metadata $obj
+}
+
 function Get-NetworkDiagGuiAppDataRoot {
     $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $env:TEMP "NetworkBeagle" }
     $root = Join-Path $base "NetworkBeagle"
@@ -370,6 +429,9 @@ function Invoke-NetworkDiagGuiCreateSupportBundle {
                 Copy-Item -LiteralPath $candidate -Destination (Join-Path $bundleRoot (Split-Path -Leaf $candidate)) -Force
             }
         }
+        if ($script:App.Run.CurrentRunMetadataPath -and (Test-Path -LiteralPath $script:App.Run.CurrentRunMetadataPath -PathType Leaf)) {
+            Copy-Item -LiteralPath $script:App.Run.CurrentRunMetadataPath -Destination (Join-Path $bundleRoot (Split-Path -Leaf $script:App.Run.CurrentRunMetadataPath)) -Force
+        }
         if ($logsFolder -and (Test-Path -LiteralPath $logsFolder -PathType Container)) {
             Copy-Item -LiteralPath (Join-Path $logsFolder "*") -Destination $bundleRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -535,13 +597,17 @@ function Start-NetworkDiagGuiRun {
     $stderrPath = Join-Path $paths.LogsFolder "stderr.log"
     $paramsJsonPath = Join-Path $paths.LogsFolder "launch-config.json"
     $stateJsonPath = Join-Path $paths.LogsFolder "gui-state.json"
+    $runMetaPath = Join-Path $paths.LogsFolder "run-metadata.json"
     $runnerPath = Join-Path $paths.LogsFolder "invoke-networkdiag.ps1"
     $script:App.Run.CurrentLaunchConfigPath = $paramsJsonPath
     $script:App.Run.CurrentGuiStatePath = $stateJsonPath
+    $script:App.Run.CurrentRunMetadataPath = $runMetaPath
 
     $paramMap = ConvertTo-NetworkDiagGuiParamMap -State $state
     [System.IO.File]::WriteAllText($paramsJsonPath, ($paramMap | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
     Write-NetworkDiagGuiStateDocument -Path $stateJsonPath -State $state
+    $runMeta = New-NetworkDiagGuiRunMetadata -State $state -Paths $paths -PreferAdmin:$PreferAdmin
+    Write-NetworkDiagGuiRunMetadata -Path $runMetaPath -Metadata $runMeta
     $runnerScript = New-NetworkDiagGuiRunnerScriptContent -ScriptPath $scriptPath -JsonPath $paramsJsonPath
     [System.IO.File]::WriteAllText($runnerPath, $runnerScript, (New-Object System.Text.UTF8Encoding $false))
 
@@ -608,10 +674,13 @@ function Start-NetworkDiagGuiRun {
         Update-NetworkDiagGuiIncidentInsightsFromRunFolder -RunFolder $analysisRunFolder
         if ($script:App.Run.StopRequested) {
             Set-NetworkDiagGuiRunState -State "Cancelled" -Message "Run stopped by user. Exit code: $code"
+            Update-NetworkDiagGuiRunMetadataCompletion -Path $runMetaPath -ExitCode $code -FinalState "cancelled"
         } elseif ($code -eq 0) {
             Set-NetworkDiagGuiRunState -State "Completed" -Message "Run finished. Exit code: 0"
+            Update-NetworkDiagGuiRunMetadataCompletion -Path $runMetaPath -ExitCode $code -FinalState "completed"
         } else {
             Set-NetworkDiagGuiRunState -State "Failed" -Message "Run finished with exit code: $code"
+            Update-NetworkDiagGuiRunMetadataCompletion -Path $runMetaPath -ExitCode $code -FinalState "failed"
         }
         $script:App.Run.StopRequested = $false
         Set-NetworkDiagGuiStatus "Run finished. Exit code: $code. Logs: $script:App.Run.CurrentLogsFolder"
