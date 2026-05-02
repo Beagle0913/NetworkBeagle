@@ -22,6 +22,7 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="8"/>
             <RowDefinition Height="2*"/>
@@ -34,9 +35,42 @@
             </StackPanel>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Border Grid.Row="1" Background="#F5F5F5" Padding="6,4" CornerRadius="3" Margin="0,0,0,8" BorderBrush="#D0D0D0" BorderThickness="1">
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Name="RunNormal" Content="Run (Standard)" Width="160" Margin="0,0,8,0"/>
+                <Button Name="RunAdmin" Content="Run Full Capabilities (Admin)" Width="240" Margin="0,0,8,0"/>
+                <Button Name="StopRun" Content="Stop Active Run" Width="140" Margin="0,0,8,0"/>
+                <Button Name="OpenCurrentRun" Content="Open Current Run Folder" Width="180" Margin="0,0,8,0"/>
+                <Button Name="OpenCurrentLogs" Content="Open Current Logs Folder" Width="180"/>
+            </WrapPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-                <GroupBox Header="Run Basics" Margin="0,0,0,8">
+                <GroupBox Name="ExperienceGroup" Header="Experience Mode + Explanations" Margin="0,0,0,8">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Experience mode" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Name="UserExperienceMode" Grid.Row="0" Grid.Column="1" Margin="4">
+                            <ComboBoxItem Content="Beginner (guided)"/>
+                            <ComboBoxItem Content="Expert (at-a-glance)"/>
+                        </ComboBox>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="What this option does" Style="{StaticResource FieldLabel}" VerticalAlignment="Top"/>
+                        <TextBlock Name="OptionHelpText" Grid.Row="1" Grid.Column="1" Margin="4" TextWrapping="Wrap" Foreground="DimGray"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="At-a-glance config" Style="{StaticResource FieldLabel}" VerticalAlignment="Top"/>
+                        <TextBlock Name="AtGlanceSummary" Grid.Row="2" Grid.Column="1" Margin="4" TextWrapping="Wrap" Foreground="DarkSlateBlue"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Name="RunBasicsGroup" Header="Run Basics" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -75,7 +109,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Runtime Rules and Output Paths" Margin="0,0,0,8">
+                <GroupBox Name="RuntimeRulesGroup" Header="Runtime Rules and Output Paths" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -93,7 +127,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Output + Lists" Margin="0,0,0,8">
+                <GroupBox Name="OutputListsGroup" Header="Output + Lists" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180"/>
@@ -125,7 +159,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Timing + Burst + Routing" Margin="0,0,0,8">
+                <GroupBox Name="TimingGroup" Header="Timing + Burst + Routing" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -160,7 +194,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Feature Switches" Margin="0,0,0,8">
+                <GroupBox Name="FeatureSwitchesGroup" Header="Feature Switches" Margin="0,0,0,8">
                     <WrapPanel Margin="8">
                         <CheckBox Name="RequireEthernet" Content="RequireEthernet" Style="{StaticResource FieldCheck}"/>
                         <CheckBox Name="SkipTcpProbe" Content="SkipTcpProbe" Style="{StaticResource FieldCheck}"/>
@@ -181,7 +215,7 @@
                     </WrapPanel>
                 </GroupBox>
 
-                <GroupBox Header="Optional Path MTU Target" Margin="0,0,0,8">
+                <GroupBox Name="PathMtuGroup" Header="Optional Path MTU Target" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180"/>
@@ -192,7 +226,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="UDP Continuous Probe" Margin="0,0,0,8">
+                <GroupBox Name="UdpGroup" Header="UDP Continuous Probe" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -216,7 +250,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Long-Lived TCP Session" Margin="0,0,0,8">
+                <GroupBox Name="LongTcpGroup" Header="Long-Lived TCP Session" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -232,7 +266,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Per-probe Timestamps + Auto-capture" Margin="0,0,0,8">
+                <GroupBox Name="ProbeCaptureGroup" Header="Per-probe Timestamps + Auto-capture" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -258,7 +292,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Profiles + Recent Runs" Margin="0,0,0,8">
+                <GroupBox Name="ProfilesGroup" Header="Profiles + Recent Runs" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -297,19 +331,11 @@
                     </Grid>
                 </GroupBox>
 
-                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,8">
-                    <Button Name="RunNormal" Content="Run (Standard)" Width="160" Margin="0,0,8,0"/>
-                    <Button Name="RunAdmin" Content="Run Full Capabilities (Admin)" Width="240" Margin="0,0,8,0"/>
-                    <Button Name="StopRun" Content="Stop Active Run" Width="140" Margin="0,0,8,0"/>
-                    <Button Name="OpenCurrentRun" Content="Open Current Run Folder" Width="180" Margin="0,0,8,0"/>
-                    <Button Name="OpenCurrentLogs" Content="Open Current Logs Folder" Width="180"/>
-                </WrapPanel>
-
                 <TextBlock Name="StatusText" Foreground="DarkSlateBlue" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Run status text"/>
                 <TextBlock Name="ValidationText" Foreground="DarkOliveGreen" Margin="0,0,0,6" TextWrapping="Wrap" AutomationProperties.Name="Validation status text"/>
                 <TextBlock Name="ParserStatusText" Foreground="SlateGray" Margin="0,0,0,8" TextWrapping="Wrap" Text="Parser status: waiting for run output..."/>
 
-                <GroupBox Header="Live Health Dashboard" Margin="0,0,0,8">
+                <GroupBox Name="HealthGroup" Header="Live Health Dashboard" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*"/>
@@ -337,7 +363,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Post-run Quick Analysis" Margin="0,0,0,8">
+                <GroupBox Name="AnalysisGroup" Header="Post-run Quick Analysis" Margin="0,0,0,8">
                     <TextBox Name="QuickAnalysis"
                              Margin="8"
                              Height="130"
@@ -347,7 +373,7 @@
                              VerticalScrollBarVisibility="Auto"/>
                 </GroupBox>
 
-                <GroupBox Header="Incident / Episode Timeline" Margin="0,0,0,8">
+                <GroupBox Name="IncidentGroup" Header="Incident / Episode Timeline" Margin="0,0,0,8">
                     <Grid Margin="8">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -358,15 +384,15 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="Quick Help" Margin="0,0,0,8">
+                <GroupBox Name="HelpGroup" Header="Quick Help" Margin="0,0,0,8">
                     <TextBlock Name="QuickHelpText" Margin="8" TextWrapping="Wrap" Foreground="DimGray" Text="Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy CLI command."/>
                 </GroupBox>
             </StackPanel>
         </ScrollViewer>
 
-        <GridSplitter Grid.Row="2" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Background="#D0D0D0"/>
+        <GridSplitter Grid.Row="3" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Background="#D0D0D0"/>
 
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>

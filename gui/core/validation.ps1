@@ -168,5 +168,22 @@ function Invoke-NetworkDiagGuiValidation {
         $controls.ValidationText.Foreground = "DarkOliveGreen"
         $controls.ValidationText.Text = "Success: validation ready to run."
     }
+    if ($controls.ContainsKey("AtGlanceSummary")) {
+        $mode = if ($controls.ContainsKey("UserExperienceMode") -and $controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "n/a" }
+        $probeSet = @("ICMP")
+        if (-not $state.SkipDnsProbe) { $probeSet += "DNS" }
+        if (-not $state.SkipTcpProbe) { $probeSet += "TCP" }
+        if ($state.EnableTlsProbe) { $probeSet += "TLS" }
+        if ($state.EnableUdpProbe) { $probeSet += "UDP" }
+        if ($state.EnableLongLivedTcp) { $probeSet += "LongTCP" }
+        $outRoot = [string]$state.OutputRoot
+        $outDisp = $outRoot
+        if ($outRoot.Length -gt 72) {
+            $tail = 69
+            $start = [math]::Max(0, $outRoot.Length - $tail)
+            $outDisp = "..." + $outRoot.Substring($start)
+        }
+        $controls.AtGlanceSummary.Text = "Mode=$mode | Duration=$($state.DurationMinutes)m | Interval=$($state.IntervalSeconds)s | Monitoring=$($state.MonitoringMode) | Probes=$($probeSet -join '+') | Output=$outDisp"
+    }
     Update-NetworkDiagGuiActionButtons
 }

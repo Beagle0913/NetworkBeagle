@@ -81,6 +81,26 @@ function ConvertTo-NetworkDiagGuiInt {
     return $iv
 }
 
+function Get-NetworkDiagGuiDefaultOutputRoot {
+    if (Test-Path variable:script:NetworkDiagGuiRepoRoot) {
+        $repo = [string]$script:NetworkDiagGuiRepoRoot
+        if ($repo) { return $repo }
+    }
+    if (Test-Path variable:script:NetworkDiagGuiEntryPath) {
+        $entry = [string]$script:NetworkDiagGuiEntryPath
+        if ($entry) { return [string](Split-Path -LiteralPath $entry -Parent) }
+    }
+    $p = $PSScriptRoot
+    if ($p -match '(?i)[\\/]gui[\\/]core\z') {
+        try {
+            return [string]((Resolve-Path -LiteralPath (Join-Path $p '..\..')).Path)
+        } catch {
+            return $p
+        }
+    }
+    return $p
+}
+
 function New-NetworkDiagGuiDefaultState {
     return @{
         DurationMinutes = 60
@@ -89,7 +109,7 @@ function New-NetworkDiagGuiDefaultState {
         HeartbeatMinutes = -1
         SnapshotMinutes = -1
         EventLogLookbackMinutes = -1
-        OutputRoot = $PSScriptRoot
+        OutputRoot = (Get-NetworkDiagGuiDefaultOutputRoot)
         RequireEthernet = $false
         SkipTcpProbe = $false
         DetailLog = $true

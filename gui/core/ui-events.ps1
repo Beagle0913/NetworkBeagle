@@ -37,11 +37,55 @@ function Restore-NetworkDiagGuiDraftStateIfAvailable {
     }
 }
 
+function Show-NetworkDiagGuiOptionHelp {
+    param([string]$ControlName)
+    $controls = $script:App.Ui.Controls
+    if (-not $controls.ContainsKey("OptionHelpText")) { return }
+    $map = $script:App.Config.OptionHelpMap
+    if ($map -and $map.ContainsKey($ControlName)) {
+        $controls.OptionHelpText.Text = [string]$map[$ControlName]
+    } else {
+        $controls.OptionHelpText.Text = "No additional explanation is available for this option."
+    }
+}
+
+function Set-NetworkDiagGuiExperienceMode {
+    $controls = $script:App.Ui.Controls
+    $selected = if ($controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "Beginner (guided)" }
+    $isBeginner = $selected -like "Beginner*"
+    $advancedGroups = @("FeatureSwitchesGroup", "UdpGroup", "LongTcpGroup", "ProbeCaptureGroup", "RuntimeRulesGroup", "TimingGroup", "PathMtuGroup")
+    foreach ($groupName in $advancedGroups) {
+        if ($controls.ContainsKey($groupName) -and $null -ne $controls[$groupName]) {
+            $controls[$groupName].Visibility = if ($isBeginner) { [System.Windows.Visibility]::Collapsed } else { [System.Windows.Visibility]::Visible }
+        }
+    }
+}
+
+function Register-NetworkDiagGuiOptionHelpBindings {
+    $controls = $script:App.Ui.Controls
+    foreach ($name in @($script:App.Config.OptionHelpMap.Keys)) {
+        if (-not $controls.ContainsKey($name)) { continue }
+        $control = $controls[$name]
+        if ($null -eq $control) { continue }
+        try {
+            $handler = {
+                param($sender, $eventArgs)
+                Show-NetworkDiagGuiOptionHelp -ControlName ([string]$sender.Name)
+            }
+            $control.Add_GotKeyboardFocus($handler)
+            $control.Add_MouseEnter($handler)
+        } catch {}
+    }
+}
+
 function Register-NetworkDiagGuiEvents {
     $controls = $script:App.Ui.Controls
 
     Restore-NetworkDiagGuiDraftStateIfAvailable
     Update-NetworkDiagDependentControls
+    Register-NetworkDiagGuiOptionHelpBindings
+    Set-NetworkDiagGuiExperienceMode
+    Show-NetworkDiagGuiOptionHelp -ControlName "UserExperienceMode"
     $controls.BurstOnFault.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipDnsProbe.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipIspEvidencePacket.Add_Click({ Update-NetworkDiagDependentControls })
@@ -239,6 +283,14 @@ function Register-NetworkDiagGuiEvents {
     $controls.MonitoringMode.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
     $controls.ProbeAddressFamily.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
     $controls.AutoCaptureMethod.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
+    $controls.UserExperienceMode.Add_SelectionChanged({
+        Set-NetworkDiagGuiExperienceMode
+        Invoke-NetworkDiagGuiValidation
+        Save-NetworkDiagGuiDraftState
+        Show-NetworkDiagGuiOptionHelp -ControlName "UserExperienceMode"
+        $sel = if ($controls.UserExperienceMode.SelectedItem) { [string]$controls.UserExperienceMode.SelectedItem.Content } else { "" }
+        Set-NetworkDiagGuiStatus -Text ("Experience mode: " + $sel)
+    })
 
     $script:App.Ui.Window.Add_KeyDown({
         param($sender, $eventArgs)

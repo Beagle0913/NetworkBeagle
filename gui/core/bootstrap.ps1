@@ -14,7 +14,7 @@ function Start-NetworkDiagGuiApp {
 
     $limits = Get-NetworkDiagGuiLimitations
     $defaultState = New-NetworkDiagGuiDefaultState
-    if (-not $defaultState.OutputRoot) { $defaultState.OutputRoot = $PSScriptRoot }
+    if (-not $defaultState.OutputRoot) { $defaultState.OutputRoot = Get-NetworkDiagGuiDefaultOutputRoot }
     $presetMap = Get-NetworkDiagGuiPresets -BaseState $defaultState
 
     if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
@@ -43,6 +43,7 @@ function Start-NetworkDiagGuiApp {
         $controls[$cbName].ToolTip = ($limits.AdminCaveats -join " ")
     }
     $tooltips = @{
+        UserExperienceMode = "Beginner mode shows guided defaults; Expert mode keeps a compact, scan-friendly view."
         DurationMinutes = "Total run duration in minutes."
         IntervalSeconds = "Main cycle interval in seconds."
         MonitoringMode = "Auto picks profile by duration; ShortRun/LongRun forces behavior."
@@ -66,6 +67,34 @@ function Start-NetworkDiagGuiApp {
         GwIcmpPolicyConfirmCycles = "Cycles needed before classifying GW ICMP policy behavior."
         RoutingRefreshIntervalCycles = "Re-resolve routes every N cycles (0 disables)."
         PathMtuProbeTarget = "Optional host/IP for path MTU probing during audits."
+        RequireEthernet = "Fail startup if default route is not Ethernet-class."
+        SkipTcpProbe = "Disable TCP/443 probe checks."
+        DetailLog = "Write a detailed narrative log file per run."
+        LegacyCsvShape = "Use legacy CSV columns for compatibility."
+        SkipDnsProbe = "Disable DNS probe checks."
+        SkipGwIcmpPolicyAdaptation = "Disable automatic gateway ICMP policy adaptation."
+        PinExternalIcmpToResolvedIp = "Probe resolved IP instead of hostname each cycle."
+        SkipConfigAudit = "Disable config-audit checks on non-OK cycles."
+        SkipCableHints = "Disable cable/NIC hint checks."
+        SkipMultiNicCrossCheck = "Disable alternate-adapter cross-check on faults."
+        SkipIspEvidencePacket = "Disable end-of-run ISP evidence bundle."
+        IspEvidenceZip = "Zip ISP evidence bundle after generation."
+        SkipWifiSignal = "Disable Wi-Fi signal snapshot checks."
+        EnableTlsProbe = "Add TLS handshake checks on top of TCP probes."
+        SkipJsonSummary = "Disable summary JSON output."
+        SelfTest = "Run preflight self-test and exit."
+        EnableUdpProbe = "Enable high-frequency UDP probe for short drop detection."
+        UdpProbeTarget = "UDP destination in host:port format."
+        UdpProbeRateHz = "UDP send rate in packets per second."
+        UdpProbePayloadBytes = "UDP payload size in bytes."
+        EnableLongLivedTcp = "Keep a long-lived TCP session and detect resets."
+        LongLivedTcpTarget = "Long-lived TCP target in host:port format."
+        LongLivedTcpReconnectBackoffSeconds = "Reconnect wait after long-lived TCP resets."
+        PerProbeTimestamps = "Include per-probe start timestamps in outputs."
+        AutoCaptureOnFault = "Auto-start bounded capture on first non-OK cycle."
+        AutoCaptureMethod = "Capture backend (pktmon or netshtrace)."
+        AutoCaptureSeconds = "Duration per auto-capture event."
+        AutoCaptureMax = "Maximum number of auto-capture events."
         PresetSelector = "Select a preconfigured profile."
         ApplyPreset = "Apply selected preset to all controls."
         SaveProfile = "Save current settings to JSON profile."
@@ -86,6 +115,9 @@ function Start-NetworkDiagGuiApp {
         LiveLogFilter = "Filter lines shown in the live log view."
         LiveLogStderrOnly = "Show only stderr lines in the live log view."
         RecentRunsFilter = "Search/filter recent runs by timestamp, exit code, or path."
+        RuntimeRulesText = "Script-side runtime constraints shown for reference."
+        OutputFallbackText = "Output folder fallback order used by the script."
+        AtGlanceSummary = "Compact summary of key run settings and mode."
     }
     foreach ($name in $tooltips.Keys) {
         if ($controls.ContainsKey($name) -and $null -ne $controls[$name]) {
@@ -101,6 +133,7 @@ function Start-NetworkDiagGuiApp {
         Config = @{
             Limits = $limits
             PresetMap = $presetMap
+            OptionHelpMap = $tooltips
         }
         Context = @{
             IsAdminGui = $isAdmin
@@ -131,6 +164,9 @@ function Start-NetworkDiagGuiApp {
     $controls.RuntimeRulesText.Text = (($limits.RuntimeRules | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
     $controls.OutputFallbackText.Text = (($limits.OutputFallback | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
     $controls.QuickHelpText.Text = "Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy CLI command."
+    $controls.UserExperienceMode.SelectedIndex = 0
+    $controls.OptionHelpText.Text = "Tip: move the mouse over any setting below (or click into it) to see what it does. Run buttons stay pinned under the yellow banner."
+    $controls.AtGlanceSummary.Text = "Mode=Beginner | Preset=default | Ready"
 
     Invoke-NetworkDiagGuiValidation
     Reset-NetworkDiagGuiLiveHealth

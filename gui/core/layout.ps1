@@ -9,7 +9,9 @@ function Get-NetworkDiagGuiLayoutXml {
 
 function Get-NetworkDiagGuiControlNames {
     return @(
-        "AdminBanner","RunabilityHint","DurationMinutes","IntervalSeconds","MonitoringMode","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",
+        "AdminBanner","RunabilityHint","UserExperienceMode","OptionHelpText","AtGlanceSummary",
+        "ExperienceGroup","RunBasicsGroup","RuntimeRulesGroup","OutputListsGroup","TimingGroup","FeatureSwitchesGroup","PathMtuGroup","UdpGroup","LongTcpGroup","ProbeCaptureGroup","ProfilesGroup","HealthGroup","AnalysisGroup","IncidentGroup","HelpGroup",
+        "DurationMinutes","IntervalSeconds","MonitoringMode","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",
         "ProbeAddressFamily","OutputRoot","BrowseOutputRoot","ExternalIcmpHosts","ExternalIcmpLabels","TcpProbeHosts","DnsProbeName",
         "IcmpCountPerTarget","IcmpTimeoutSeconds","DnsTimeoutMs","BurstOnFault","BurstIntervalSeconds","BurstCycles","MaxBurstSeconds",
         "GwIcmpPolicyConfirmCycles","RoutingRefreshIntervalCycles","RequireEthernet","SkipTcpProbe","DetailLog","LegacyCsvShape",

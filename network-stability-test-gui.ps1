@@ -16,6 +16,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Repo root (folder containing this script). GUI modules live under gui\core; default paths must not use that folder.
+$script:NetworkDiagGuiRepoRoot = $PSScriptRoot
+
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName WindowsBase
