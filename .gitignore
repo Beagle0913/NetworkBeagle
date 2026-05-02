@@ -13,3 +13,14 @@ validation/**/*.zip
 *.tmp
 *.bak
 *.user
+.vscode/
+
+# Local heavyweight/runtime extras not required for source publishing
+oracleJdk-26/
+run_ethwifi/
+
+# Capture and trace artifacts
+*.etl
+*.cap
+*.pcap
+*.pcapng

@@ -17,6 +17,8 @@ function New-NetworkDiagGuiLiveHealthState {
         ExternalTrend = [System.Collections.Generic.List[int]]::new()
         TcpTrend = [System.Collections.Generic.List[int]]::new()
         LastUpdate = "n/a"
+        ParseHitCount = 0
+        ParseMissCount = 0
     }
 }
 
@@ -93,6 +95,10 @@ function Reset-NetworkDiagGuiLiveHealth {
         $controls.HealthSeverity.Foreground = "DimGray"
         $controls.HealthTrend.Text = "Trend(20): DNS=n/a GW=n/a EXT=n/a TCP=n/a"
         $controls.HealthTrend.Foreground = "DimGray"
+        if ($controls.ContainsKey("ParserStatusText")) {
+            $controls.ParserStatusText.Text = "Parser status: waiting for run output..."
+            $controls.ParserStatusText.Foreground = "SlateGray"
+        }
     })
 }
 
@@ -122,6 +128,10 @@ function Update-NetworkDiagGuiHealthUi {
         $controls.HealthSeverity.Foreground = Get-NetworkDiagGuiStatusBrush -Status $h.Severity
         $controls.HealthTrend.Text = "Trend($($h.TrendWindow)): DNS=$dnsTrend GW=$gwTrend EXT=$extTrend TCP=$tcpTrend"
         $controls.HealthTrend.Foreground = "SlateGray"
+        if ($controls.ContainsKey("ParserStatusText")) {
+            $controls.ParserStatusText.Text = "Parser status: parsed=$($h.ParseHitCount) unparsed=$($h.ParseMissCount)"
+            $controls.ParserStatusText.Foreground = if ($h.ParseMissCount -gt $h.ParseHitCount -and $h.ParseHitCount -gt 0) { "DarkGoldenrod" } else { "SlateGray" }
+        }
     })
 }
 
@@ -132,9 +142,11 @@ function Update-NetworkDiagGuiHealthFromLine {
     $h = $script:App.Health
 
     $hasCycle = $false
+    $parsedAny = $false
     if ($text -match "Verdict=([A-Z_]+)") {
         $verdict = $Matches[1]
         $hasCycle = $true
+        $parsedAny = $true
         $h.CycleCount = [int]$h.CycleCount + 1
         $h.LastVerdict = $verdict
         if ($verdict -eq "OK") {
@@ -151,15 +163,19 @@ function Update-NetworkDiagGuiHealthFromLine {
     if ($text -match "DNS=DNS:([\-0-9]+)ms") {
         $dns = [int]$Matches[1]
         $h.DnsStatus = if ($dns -ge 0) { "OK (${dns}ms)" } else { "FAIL" }
+        $parsedAny = $true
     } elseif ($text -match "DNS=(na|NA)") {
         $h.DnsStatus = "n/a"
+        $parsedAny = $true
     }
 
     if ($text -match "\bGW=([\-0-9]+)ms\b") {
         $gw = [int]$Matches[1]
         $h.GatewayStatus = if ($gw -ge 0) { "OK (${gw}ms)" } else { "FAIL" }
+        $parsedAny = $true
     } elseif ($text -match "\bGW=(na|NA)\b") {
         $h.GatewayStatus = "n/a"
+        $parsedAny = $true
     }
 
     if ($text -match "EXT=(.+?)\s+DNS=") {
@@ -169,6 +185,7 @@ function Update-NetworkDiagGuiHealthFromLine {
         } else {
             $h.ExternalStatus = "OK"
         }
+        $parsedAny = $true
     }
 
     if ($text -match "TCP_CF_ms=([\-0-9a-zA-Z]+)\s+TCP_GG_ms=([\-0-9a-zA-Z]+)") {
@@ -181,10 +198,12 @@ function Update-NetworkDiagGuiHealthFromLine {
         } else {
             $h.TcpTlsStatus = "FAIL"
         }
+        $parsedAny = $true
     }
 
     if ($text -match "TLS_.*=-1") {
         $h.TcpTlsStatus = "DEGRADED"
+        $parsedAny = $true
     }
 
     if ($hasCycle) {
@@ -194,6 +213,7 @@ function Update-NetworkDiagGuiHealthFromLine {
         Add-NetworkDiagGuiTrendPoint -Series $h.TcpTrend -Value (ConvertTo-NetworkDiagGuiTrendScore -Status $h.TcpTlsStatus) -Window ([int]$h.TrendWindow)
     }
 
+    if ($parsedAny) { $h.ParseHitCount = [int]$h.ParseHitCount + 1 } else { $h.ParseMissCount = [int]$h.ParseMissCount + 1 }
     $h.LastUpdate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Invoke-NetworkDiagGuiHook -Hooks $script:App.Hooks -EventName "CycleObserved" -Payload @{ Line = $text; Health = $h }
     Update-NetworkDiagGuiHealthUi

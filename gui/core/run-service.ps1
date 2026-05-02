@@ -22,6 +22,55 @@ function Write-NetworkDiagGuiLogLine {
     Add-Content -LiteralPath $Path -Value $line -Encoding UTF8
 }
 
+function Get-NetworkDiagGuiAppDataRoot {
+    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $env:TEMP "NetworkBeagle" }
+    $root = Join-Path $base "NetworkBeagle"
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+        [void](New-Item -Path $root -ItemType Directory -Force)
+    }
+    return $root
+}
+
+function Get-NetworkDiagGuiRecentRunsManifestPath {
+    return Join-Path (Get-NetworkDiagGuiAppDataRoot) "recent-runs.json"
+}
+
+function Save-NetworkDiagGuiRecentRuns {
+    try {
+        $path = Get-NetworkDiagGuiRecentRunsManifestPath
+        $payload = @($script:App.Run.RecentRuns)
+        [System.IO.File]::WriteAllText($path, ($payload | ConvertTo-Json -Depth 8), (New-Object System.Text.UTF8Encoding $false))
+    } catch {
+        Set-NetworkDiagGuiStatus -Text ("Warning: Could not persist recent runs history: " + $_.Exception.Message)
+    }
+}
+
+function Load-NetworkDiagGuiRecentRuns {
+    try {
+        $path = Get-NetworkDiagGuiRecentRunsManifestPath
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
+        $payload = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        if ($payload -isnot [System.Collections.IEnumerable]) { return }
+        foreach ($item in @($payload)) {
+            if (-not $item) { continue }
+            $script:App.Run.RecentRuns.Add(@{
+                StartedAt = [string]$item.StartedAt
+                LauncherRunRoot = [string]$item.LauncherRunRoot
+                LogsFolder = [string]$item.LogsFolder
+                ScriptRunFolder = [string]$item.ScriptRunFolder
+                StateConfigPath = [string]$item.StateConfigPath
+                LaunchConfigPath = [string]$item.LaunchConfigPath
+                ExitCode = if ($null -eq $item.ExitCode -or $item.ExitCode -eq "") { $null } else { [int]$item.ExitCode }
+            })
+        }
+        while ($script:App.Run.RecentRuns.Count -gt 25) {
+            $script:App.Run.RecentRuns.RemoveAt($script:App.Run.RecentRuns.Count - 1)
+        }
+    } catch {
+        Set-NetworkDiagGuiStatus -Text ("Warning: Could not load recent runs history: " + $_.Exception.Message)
+    }
+}
+
 function Get-NetworkDiagGuiRunTransitionMap {
     return @{
         Idle = @("Idle", "Validating", "Starting")
@@ -72,6 +121,16 @@ function Append-NetworkDiagGuiLiveLog {
     param([string]$Line)
     $window = $script:App.Ui.Window
     $controls = $script:App.Ui.Controls
+    $filter = ""
+    if ($controls.ContainsKey("LiveLogFilter") -and $controls.LiveLogFilter) {
+        $filter = [string]$controls.LiveLogFilter.Text
+    }
+    $stderrOnly = $false
+    if ($controls.ContainsKey("LiveLogStderrOnly") -and $controls.LiveLogStderrOnly) {
+        $stderrOnly = [bool]$controls.LiveLogStderrOnly.IsChecked
+    }
+    if ($stderrOnly -and $Line -notmatch "^\[stderr\]") { return }
+    if ($filter -and $Line -notmatch [regex]::Escape($filter)) { return }
     $window.Dispatcher.Invoke([Action]{
         $controls.LiveLog.AppendText($Line + [Environment]::NewLine)
         $controls.LiveLog.ScrollToEnd()
@@ -112,6 +171,13 @@ function Set-NetworkDiagGuiRunState {
     }
 
     $script:App.Run.State = $requestedState
+    if (-not $script:App.Run.ContainsKey("TransitionHistory")) {
+        $script:App.Run.TransitionHistory = [System.Collections.Generic.List[string]]::new()
+    }
+    $script:App.Run.TransitionHistory.Add(("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $currentState -> $requestedState : $Message"))
+    while ($script:App.Run.TransitionHistory.Count -gt 50) {
+        $script:App.Run.TransitionHistory.RemoveAt(0)
+    }
     $status = if ($Message) { "${State}: $Message" } else { $State }
     if ($requestedState -ne $State) {
         $status = "${requestedState}: $Message"
@@ -123,11 +189,17 @@ function Set-NetworkDiagGuiRunState {
 function Refresh-NetworkDiagGuiRecentRuns {
     $controls = $script:App.Ui.Controls
     $controls.RecentRunsList.Items.Clear()
+    $filter = ""
+    if ($controls.ContainsKey("RecentRunsFilter") -and $controls.RecentRunsFilter) {
+        $filter = [string]$controls.RecentRunsFilter.Text
+    }
     foreach ($item in $script:App.Run.RecentRuns) {
         $exitCodeLabel = if ($null -eq $item.ExitCode) { "running" } else { "exit=$($item.ExitCode)" }
         $display = "{0}  ({1})  {2}" -f $item.StartedAt, $exitCodeLabel, $item.LauncherRunRoot
+        if ($filter -and $display -notmatch [regex]::Escape($filter)) { continue }
         [void]$controls.RecentRunsList.Items.Add($display)
     }
+    Save-NetworkDiagGuiRecentRuns
 }
 
 function Add-NetworkDiagGuiRecentRun {
@@ -146,15 +218,34 @@ function Get-NetworkDiagGuiSelectedRecentRun {
     return $script:App.Run.RecentRuns[$idx]
 }
 
+function Get-NetworkDiagGuiArtifactPathsText {
+    $paths = [System.Collections.Generic.List[string]]::new()
+    if ($script:App.Run.CurrentLogsFolder) { $paths.Add("LogsFolder: $($script:App.Run.CurrentLogsFolder)") }
+    if ($script:App.Run.CurrentRunFolder) { $paths.Add("RunFolder: $($script:App.Run.CurrentRunFolder)") }
+    if ($script:App.Run.CurrentLaunchConfigPath) { $paths.Add("LaunchConfig: $($script:App.Run.CurrentLaunchConfigPath)") }
+    if ($script:App.Run.CurrentGuiStatePath) { $paths.Add("GuiState: $($script:App.Run.CurrentGuiStatePath)") }
+    if ($script:App.Run.CurrentProcess -and -not $script:App.Run.CurrentProcess.HasExited) { $paths.Add("PID: $($script:App.Run.CurrentProcess.Id)") }
+    return ($paths -join [Environment]::NewLine)
+}
+
 function Stop-NetworkDiagGuiRun {
     if (-not $script:App.Run.CurrentProcess -or $script:App.Run.CurrentProcess.HasExited) {
         Set-NetworkDiagGuiRunState -State "Idle" -Message "No active run."
         return
     }
     $script:App.Run.StopRequested = $true
-    Set-NetworkDiagGuiRunState -State "Stopping" -Message "Stopping active process..."
+    Set-NetworkDiagGuiRunState -State "Stopping" -Message "Attempting graceful stop..."
     try {
-        $script:App.Run.CurrentProcess.Kill()
+        $stoppedGracefully = $false
+        if ($script:App.Run.CurrentProcess.CloseMainWindow()) {
+            $stoppedGracefully = $script:App.Run.CurrentProcess.WaitForExit(2500)
+        }
+        if (-not $stoppedGracefully -and -not $script:App.Run.CurrentProcess.HasExited) {
+            $script:App.Run.CurrentProcess.Kill()
+            Set-NetworkDiagGuiStatus -Text "Hard stop used after graceful stop timeout."
+        } else {
+            Set-NetworkDiagGuiStatus -Text "Graceful stop requested."
+        }
     } catch {
         Set-NetworkDiagGuiRunState -State "Failed" -Message ("Stop failed: " + $_.Exception.Message)
     }
@@ -188,6 +279,18 @@ function Start-NetworkDiagGuiRun {
     }
     if ($validation.Warnings.Count -gt 0) {
         Set-NetworkDiagGuiStatus ($validation.Warnings -join " | ")
+        if ($state.DurationMinutes -ge 1440 -and $state.DetailLog) {
+            $ans = [System.Windows.MessageBox]::Show(
+                "This run is 24h+ with DetailLog enabled. Logs may become very large. Continue?",
+                "Long run confirmation",
+                [System.Windows.MessageBoxButton]::YesNo,
+                [System.Windows.MessageBoxImage]::Warning
+            )
+            if ($ans -ne [System.Windows.MessageBoxResult]::Yes) {
+                Set-NetworkDiagGuiRunState -State "Idle" -Message "Run canceled by user."
+                return
+            }
+        }
     } else {
         Set-NetworkDiagGuiStatus "Validation passed."
     }
@@ -243,6 +346,8 @@ function Start-NetworkDiagGuiRun {
     $paramsJsonPath = Join-Path $paths.LogsFolder "launch-config.json"
     $stateJsonPath = Join-Path $paths.LogsFolder "gui-state.json"
     $runnerPath = Join-Path $paths.LogsFolder "invoke-networkdiag.ps1"
+    $script:App.Run.CurrentLaunchConfigPath = $paramsJsonPath
+    $script:App.Run.CurrentGuiStatePath = $stateJsonPath
 
     $paramMap = ConvertTo-NetworkDiagGuiParamMap -State $state
     [System.IO.File]::WriteAllText($paramsJsonPath, ($paramMap | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
@@ -339,12 +444,14 @@ function Start-NetworkDiagGuiRun {
         return
     }
     $script:App.Run.CurrentProcess = $p
+    Append-NetworkDiagGuiLiveLog "Runner PID: $($p.Id)"
     Add-NetworkDiagGuiRecentRun -Item @{
         StartedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
         LauncherRunRoot = $paths.LauncherRunRoot
         LogsFolder = $paths.LogsFolder
         ScriptRunFolder = ""
         StateConfigPath = $stateJsonPath
+        LaunchConfigPath = $paramsJsonPath
         ExitCode = $null
     }
     Set-NetworkDiagGuiRunState -State "Running" -Message "Run started."

@@ -1,10 +1,53 @@
+function Get-NetworkDiagGuiDraftStatePath {
+    return Join-Path (Get-NetworkDiagGuiAppDataRoot) "draft-state.json"
+}
+
+function Save-NetworkDiagGuiDraftState {
+    $state = Get-NetworkDiagGuiStateSnapshot
+    if (-not $state) { return }
+    try {
+        $path = Get-NetworkDiagGuiDraftStatePath
+        [System.IO.File]::WriteAllText($path, ($state | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+    } catch {
+        Set-NetworkDiagGuiStatus -Text ("Warning: Could not save draft state: " + $_.Exception.Message)
+    }
+}
+
+function Restore-NetworkDiagGuiDraftStateIfAvailable {
+    try {
+        $path = Get-NetworkDiagGuiDraftStatePath
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
+        $loaded = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        if (-not $loaded) { return }
+        $result = [System.Windows.MessageBox]::Show(
+            "A previous GUI draft state was found. Restore it?",
+            "Restore previous state",
+            [System.Windows.MessageBoxButton]::YesNo,
+            [System.Windows.MessageBoxImage]::Question
+        )
+        if ($result -eq [System.Windows.MessageBoxResult]::Yes) {
+            $merged = Merge-NetworkDiagGuiState -Overrides $loaded
+            Set-NetworkDiagGuiControlState -Controls $script:App.Ui.Controls -State $merged
+            Update-NetworkDiagDependentControls
+            Invoke-NetworkDiagGuiValidation
+            Set-NetworkDiagGuiStatus -Text "Recovered previous launcher draft state."
+        }
+    } catch {
+        Set-NetworkDiagGuiStatus -Text ("Warning: Draft state restore failed: " + $_.Exception.Message)
+    }
+}
+
 function Register-NetworkDiagGuiEvents {
     $controls = $script:App.Ui.Controls
 
+    Restore-NetworkDiagGuiDraftStateIfAvailable
     Update-NetworkDiagDependentControls
     $controls.BurstOnFault.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipDnsProbe.Add_Click({ Update-NetworkDiagDependentControls })
     $controls.SkipIspEvidencePacket.Add_Click({ Update-NetworkDiagDependentControls })
+    $controls.EnableUdpProbe.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
+    $controls.EnableLongLivedTcp.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
+    $controls.AutoCaptureOnFault.Add_Click({ Update-NetworkDiagDependentControls; Invoke-NetworkDiagGuiValidation })
 
     $controls.BrowseOutputRoot.Add_Click({
         $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -61,6 +104,53 @@ function Register-NetworkDiagGuiEvents {
     $controls.RunNormal.Add_Click({ Start-NetworkDiagGuiRun })
     $controls.RunAdmin.Add_Click({ Start-NetworkDiagGuiRun -PreferAdmin })
     $controls.StopRun.Add_Click({ Stop-NetworkDiagGuiRun })
+    $controls.ClearLiveLog.Add_Click({ $controls.LiveLog.Clear() })
+    $controls.LiveLogFilter.Add_TextChanged({
+        Set-NetworkDiagGuiStatus -Text ("Log filter updated: '" + [string]$controls.LiveLogFilter.Text + "'")
+    })
+    $controls.RecentRunsFilter.Add_TextChanged({
+        Refresh-NetworkDiagGuiRecentRuns
+    })
+    $controls.LiveLogStderrOnly.Add_Click({
+        Set-NetworkDiagGuiStatus -Text ("Log mode: " + $(if ([bool]$controls.LiveLogStderrOnly.IsChecked) { "stderr only" } else { "stdout + stderr" }))
+    })
+
+    $controls.ExportCliCommand.Add_Click({
+        try {
+            $state = Get-NetworkDiagGuiStateFromControls -Controls $controls -Limits $script:App.Config.Limits
+            $state.OutputFolder = "<output-folder>"
+            $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+            [System.Windows.Clipboard]::SetText($cmd)
+            Set-NetworkDiagGuiRunState -State "Idle" -Message "CLI command copied to clipboard."
+        } catch {
+            [System.Windows.MessageBox]::Show("Failed to export CLI command: $($_.Exception.Message)", "Copy CLI command", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        }
+    })
+    $controls.CopyArtifactPaths.Add_Click({
+        $paths = Get-NetworkDiagGuiArtifactPathsText
+        if (-not $paths) {
+            [System.Windows.MessageBox]::Show("No artifact paths are available yet.", "Copy artifact paths", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+            return
+        }
+        [System.Windows.Clipboard]::SetText($paths)
+        Set-NetworkDiagGuiStatus -Text "Artifact paths copied to clipboard."
+    })
+    $controls.OpenLaunchConfig.Add_Click({
+        $path = [string]$script:App.Run.CurrentLaunchConfigPath
+        if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$path`""
+        } else {
+            [System.Windows.MessageBox]::Show("launch-config.json is not available yet.", "Open launch config", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+        }
+    })
+    $controls.OpenGuiState.Add_Click({
+        $path = [string]$script:App.Run.CurrentGuiStatePath
+        if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$path`""
+        } else {
+            [System.Windows.MessageBox]::Show("gui-state.json is not available yet.", "Open gui-state", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+        }
+    })
 
     $controls.OpenCurrentRun.Add_Click({
         if ($script:App.Run.CurrentRunFolder -and (Test-Path -LiteralPath $script:App.Run.CurrentRunFolder)) {
@@ -131,18 +221,52 @@ function Register-NetworkDiagGuiEvents {
         "DurationMinutes","IntervalSeconds","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",
         "OutputRoot","ExternalIcmpHosts","ExternalIcmpLabels","TcpProbeHosts","DnsProbeName","IcmpCountPerTarget",
         "IcmpTimeoutSeconds","DnsTimeoutMs","BurstIntervalSeconds","BurstCycles","MaxBurstSeconds",
-        "GwIcmpPolicyConfirmCycles","RoutingRefreshIntervalCycles","PathMtuProbeTarget"
+        "GwIcmpPolicyConfirmCycles","RoutingRefreshIntervalCycles","PathMtuProbeTarget",
+        "UdpProbeTarget","UdpProbeRateHz","UdpProbePayloadBytes","LongLivedTcpTarget",
+        "LongLivedTcpReconnectBackoffSeconds","AutoCaptureSeconds","AutoCaptureMax"
     )) {
-        $controls[$name].Add_TextChanged({ Invoke-NetworkDiagGuiValidation })
+        $controls[$name].Add_TextChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
     }
     foreach ($name in @(
         "RequireEthernet","SkipTcpProbe","DetailLog","LegacyCsvShape","SkipDnsProbe","BurstOnFault",
         "SkipGwIcmpPolicyAdaptation","PinExternalIcmpToResolvedIp","SkipConfigAudit","SkipCableHints",
         "SkipMultiNicCrossCheck","SkipIspEvidencePacket","IspEvidenceZip","SkipWifiSignal",
-        "EnableTlsProbe","SkipJsonSummary","SelfTest"
+        "EnableTlsProbe","SkipJsonSummary","SelfTest","EnableUdpProbe","EnableLongLivedTcp",
+        "PerProbeTimestamps","AutoCaptureOnFault"
     )) {
-        $controls[$name].Add_Click({ Invoke-NetworkDiagGuiValidation })
+        $controls[$name].Add_Click({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
     }
-    $controls.MonitoringMode.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation })
-    $controls.ProbeAddressFamily.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation })
+    $controls.MonitoringMode.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
+    $controls.ProbeAddressFamily.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
+    $controls.AutoCaptureMethod.Add_SelectionChanged({ Invoke-NetworkDiagGuiValidation; Save-NetworkDiagGuiDraftState })
+
+    $script:App.Ui.Window.Add_KeyDown({
+        param($sender, $eventArgs)
+        if ($eventArgs.Key -eq [System.Windows.Input.Key]::F5) {
+            Start-NetworkDiagGuiRun
+            $eventArgs.Handled = $true
+            return
+        }
+        if (($eventArgs.KeyboardDevice.Modifiers -band [System.Windows.Input.ModifierKeys]::Control) -and
+            ($eventArgs.KeyboardDevice.Modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -and
+            $eventArgs.Key -eq [System.Windows.Input.Key]::R) {
+            Start-NetworkDiagGuiRun -PreferAdmin
+            $eventArgs.Handled = $true
+            return
+        }
+        if (($eventArgs.KeyboardDevice.Modifiers -band [System.Windows.Input.ModifierKeys]::Control) -and $eventArgs.Key -eq [System.Windows.Input.Key]::L) {
+            $controls.LiveLogFilter.Focus() | Out-Null
+            $eventArgs.Handled = $true
+            return
+        }
+        if (($eventArgs.KeyboardDevice.Modifiers -band [System.Windows.Input.ModifierKeys]::Control) -and $eventArgs.Key -eq [System.Windows.Input.Key]::E) {
+            $controls.ExportCliCommand.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Button]::ClickEvent)))
+            $eventArgs.Handled = $true
+            return
+        }
+    })
+
+    $script:App.Ui.Window.Add_Closing({
+        Save-NetworkDiagGuiDraftState
+    })
 }

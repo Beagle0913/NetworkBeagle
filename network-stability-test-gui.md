@@ -4,6 +4,17 @@
 
 ## Start
 
+### Easy (one-click GUI)
+
+- Double-click `Start-NetworkBeagle-GUI.cmd`
+- Or run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\Start-NetworkBeagle-GUI.ps1"
+```
+
+### Advanced (PowerShell)
+
 ```powershell
 Set-Location "<path-to-your-cloned-repo>"
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\network-stability-test-gui.ps1"

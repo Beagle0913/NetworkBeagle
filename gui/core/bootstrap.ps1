@@ -38,6 +38,7 @@ function Start-NetworkDiagGuiApp {
     } else {
         "Admin context: non-admin. Some features run in degraded/loose mode. Use 'Run Full Capabilities (Admin)' for strict behavior."
     }
+    $controls.RunabilityHint.Text = "Runability: advanced users can run via PowerShell; less technical users can use Start-NetworkBeagle-GUI.cmd."
     foreach ($cbName in @("SkipMultiNicCrossCheck","SkipConfigAudit","SkipCableHints","RequireEthernet","IspEvidenceZip")) {
         $controls[$cbName].ToolTip = ($limits.AdminCaveats -join " ")
     }
@@ -78,6 +79,13 @@ function Start-NetworkDiagGuiApp {
         StopRun = "Stop the currently running diagnostic process."
         OpenCurrentRun = "Open the active run folder."
         OpenCurrentLogs = "Open the active logs folder."
+        ExportCliCommand = "Copy a PowerShell command equivalent to current GUI selections."
+        CopyArtifactPaths = "Copy run artifact paths (logs, config, gui-state, PID)."
+        OpenLaunchConfig = "Open the current launch-config.json file location."
+        OpenGuiState = "Open the current gui-state.json file location."
+        LiveLogFilter = "Filter lines shown in the live log view."
+        LiveLogStderrOnly = "Show only stderr lines in the live log view."
+        RecentRunsFilter = "Search/filter recent runs by timestamp, exit code, or path."
     }
     foreach ($name in $tooltips.Keys) {
         if ($controls.ContainsKey($name) -and $null -ne $controls[$name]) {
@@ -103,17 +111,26 @@ function Start-NetworkDiagGuiApp {
         Run = @{
             CurrentRunFolder = ""
             CurrentLogsFolder = ""
+            CurrentLaunchConfigPath = ""
+            CurrentGuiStatePath = ""
             CurrentProcess = $null
             ValidationHasErrors = $false
             State = "Idle"
             StopRequested = $false
             RecentRuns = [System.Collections.Generic.List[hashtable]]::new()
+            TransitionHistory = [System.Collections.Generic.List[string]]::new()
         }
         Health = @{}
         Hooks = New-NetworkDiagGuiHooks
     }
 
     Register-NetworkDiagGuiEvents
+    Load-NetworkDiagGuiRecentRuns
+    Refresh-NetworkDiagGuiRecentRuns
+
+    $controls.RuntimeRulesText.Text = (($limits.RuntimeRules | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
+    $controls.OutputFallbackText.Text = (($limits.OutputFallback | ForEach-Object { " - $_" }) -join [Environment]::NewLine)
+    $controls.QuickHelpText.Text = "Shortcuts: F5 run standard, Ctrl+Shift+R run elevated, Ctrl+L focus log filter, Ctrl+E copy CLI command."
 
     Invoke-NetworkDiagGuiValidation
     Reset-NetworkDiagGuiLiveHealth

@@ -53,4 +53,29 @@ Describe "GUI state helpers" {
         $params.AutoCaptureOnFault | Should Be $true
         $params.AutoCaptureMethod | Should Be "pktmon"
     }
+
+    It "validates host:port targets when advanced probes are enabled" {
+        $limits = Get-NetworkDiagGuiLimitations
+        $state = Merge-NetworkDiagGuiState -Overrides @{
+            EnableUdpProbe = $true
+            UdpProbeTarget = "bad_target"
+            EnableLongLivedTcp = $true
+            LongLivedTcpTarget = "stillbad"
+        }
+        $result = Test-NetworkDiagGuiState -State $state -Limits $limits
+        ($result.Errors -join " | ") | Should Match "UdpProbeTarget must be in host:port"
+        ($result.Errors -join " | ") | Should Match "LongLivedTcpTarget must be in host:port"
+    }
+
+    It "exports a runnable cli command string from state" {
+        $state = Merge-NetworkDiagGuiState -Overrides @{
+            EnableUdpProbe = $true
+            UdpProbeTarget = "8.8.8.8:443"
+        }
+        $state.OutputFolder = "C:\Temp\out"
+        $cmd = ConvertTo-NetworkDiagGuiCliCommand -State $state
+        $cmd | Should Match "network-stability-test.ps1"
+        $cmd | Should Match "-EnableUdpProbe"
+        $cmd | Should Match "-UdpProbeTarget"
+    }
 }

@@ -378,3 +378,27 @@ function Get-NetworkDiagGuiStateSnapshot {
         return $null
     }
 }
+
+function ConvertTo-NetworkDiagGuiCliCommand {
+    param([hashtable]$State)
+
+    if (-not $State) { return "" }
+    $paramMap = ConvertTo-NetworkDiagGuiParamMap -State $State
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add("powershell -NoProfile -ExecutionPolicy Bypass -File `".\network-stability-test.ps1`"")
+    foreach ($key in $paramMap.Keys) {
+        $value = $paramMap[$key]
+        if ($value -is [bool]) {
+            if ($value) { $parts.Add("-$key") }
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
+            $rendered = @($value | ForEach-Object { "`"$($_.ToString().Replace('"','`"'))`"" }) -join ", "
+            $parts.Add("-$key @($rendered)")
+            continue
+        }
+        $escaped = $value.ToString().Replace('"', '`"')
+        $parts.Add("-$key `"$escaped`"")
+    }
+    return ($parts -join " ")
+}

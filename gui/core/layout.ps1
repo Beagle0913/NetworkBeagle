@@ -9,7 +9,7 @@ function Get-NetworkDiagGuiLayoutXml {
 
 function Get-NetworkDiagGuiControlNames {
     return @(
-        "AdminBanner","DurationMinutes","IntervalSeconds","MonitoringMode","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",
+        "AdminBanner","RunabilityHint","DurationMinutes","IntervalSeconds","MonitoringMode","HeartbeatMinutes","SnapshotMinutes","EventLogLookbackMinutes",
         "ProbeAddressFamily","OutputRoot","BrowseOutputRoot","ExternalIcmpHosts","ExternalIcmpLabels","TcpProbeHosts","DnsProbeName",
         "IcmpCountPerTarget","IcmpTimeoutSeconds","DnsTimeoutMs","BurstOnFault","BurstIntervalSeconds","BurstCycles","MaxBurstSeconds",
         "GwIcmpPolicyConfirmCycles","RoutingRefreshIntervalCycles","RequireEthernet","SkipTcpProbe","DetailLog","LegacyCsvShape",
@@ -18,9 +18,10 @@ function Get-NetworkDiagGuiControlNames {
         "EnableUdpProbe","UdpProbeTarget","UdpProbeRateHz","UdpProbePayloadBytes",
         "EnableLongLivedTcp","LongLivedTcpTarget","LongLivedTcpReconnectBackoffSeconds",
         "PerProbeTimestamps","AutoCaptureOnFault","AutoCaptureMethod","AutoCaptureSeconds","AutoCaptureMax",
-        "PresetSelector","ApplyPreset","SaveProfile","LoadProfile","RecentRunsList","ReRunSelected","OpenSelectedRun","OpenSelectedLogs",
-        "RunNormal","RunAdmin","StopRun","OpenCurrentRun","OpenCurrentLogs","StatusText","ValidationText",
+        "RuntimeRulesText","OutputFallbackText","PresetSelector","ApplyPreset","SaveProfile","LoadProfile","RecentRunsList","RecentRunsFilter","ReRunSelected","OpenSelectedRun","OpenSelectedLogs",
+        "ExportCliCommand","CopyArtifactPaths","OpenLaunchConfig","OpenGuiState",
+        "RunNormal","RunAdmin","StopRun","OpenCurrentRun","OpenCurrentLogs","StatusText","ValidationText","ParserStatusText","QuickHelpText",
         "HealthRunVerdict","HealthDns","HealthGateway","HealthExternal","HealthTcp","HealthCycles","HealthLastUpdate","HealthSeverity","HealthTrend",
-        "QuickAnalysis","IncidentReasonText","EpisodeTimelineList","LiveLog"
+        "QuickAnalysis","IncidentReasonText","EpisodeTimelineList","LiveLog","LiveLogFilter","LiveLogStderrOnly","ClearLiveLog"
     )
 }

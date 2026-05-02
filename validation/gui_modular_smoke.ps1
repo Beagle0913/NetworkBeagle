@@ -27,6 +27,19 @@ function Test-ParseFile {
 
 $entryPath = Join-Path $ProjectRoot "network-stability-test-gui.ps1"
 Test-ParseFile -Path $entryPath
+$easyLauncherPath = Join-Path $ProjectRoot "Start-NetworkBeagle-GUI.ps1"
+if (Test-Path -LiteralPath $easyLauncherPath -PathType Leaf) {
+    Test-ParseFile -Path $easyLauncherPath
+}
+$entryRaw = Get-Content -LiteralPath $entryPath -Raw -Encoding UTF8
+$requiresCount = [regex]::Matches($entryRaw, "(?m)^#Requires\s+-Version\s+5\.1\s*$").Count
+if ($requiresCount -ne 1) {
+    throw "Entrypoint drift: expected exactly one #Requires header, found $requiresCount."
+}
+$startCallCount = [regex]::Matches($entryRaw, "Start-NetworkDiagGuiApp\b").Count
+if ($startCallCount -ne 1) {
+    throw "Entrypoint drift: expected exactly one Start-NetworkDiagGuiApp call, found $startCallCount."
+}
 
 $coreRoot = Join-Path $ProjectRoot "gui\core"
 $moduleFiles = @(

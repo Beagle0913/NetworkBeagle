@@ -13,6 +13,18 @@ function Test-NetworkDiagGuiHostToken {
     return ($kind -eq [System.UriHostNameType]::Dns)
 }
 
+function Test-NetworkDiagGuiHostPortToken {
+    param([string]$Value)
+    if (-not $Value) { return $false }
+    $token = $Value.Trim()
+    if (-not $token) { return $false }
+    if ($token -notmatch "^(?<host>[^:]+):(?<port>\d{1,5})$") { return $false }
+    $host = [string]$Matches.host
+    $port = [int]$Matches.port
+    if ($port -lt 1 -or $port -gt 65535) { return $false }
+    return (Test-NetworkDiagGuiHostToken -Value $host)
+}
+
 function Test-NetworkDiagGuiCanWriteDirectory {
     param([string]$Path)
     if (-not $Path) { return $false }
@@ -80,6 +92,24 @@ function Test-NetworkDiagGuiState {
     if ($State.PathMtuProbeTarget -and -not (Test-NetworkDiagGuiHostToken -Value $State.PathMtuProbeTarget)) {
         $errors.Add("PathMtuProbeTarget must be a valid hostname or IP.")
     }
+    if ($State.ContainsKey("EnableUdpProbe") -and [bool]$State.EnableUdpProbe) {
+        if (-not (Test-NetworkDiagGuiHostPortToken -Value $State.UdpProbeTarget)) {
+            $errors.Add("UdpProbeTarget must be in host:port format and use a valid host/IP and port.")
+        }
+    }
+    if ($State.ContainsKey("EnableLongLivedTcp") -and [bool]$State.EnableLongLivedTcp) {
+        if (-not (Test-NetworkDiagGuiHostPortToken -Value $State.LongLivedTcpTarget)) {
+            $errors.Add("LongLivedTcpTarget must be in host:port format and use a valid host/IP and port.")
+        }
+    }
+    if ($State.ContainsKey("AutoCaptureOnFault") -and [bool]$State.AutoCaptureOnFault) {
+        if (-not ($Limits.AllowedSets.AutoCaptureMethod -contains [string]$State.AutoCaptureMethod)) {
+            $errors.Add("AutoCaptureMethod must be one of: pktmon, netshtrace.")
+        }
+        if (-not [bool]$script:App.Context.IsAdminGui) {
+            $warnings.Add("AutoCaptureOnFault requested in non-admin mode; capture may be skipped by runtime permissions.")
+        }
+    }
     return @{ Errors = @($errors); Warnings = @($warnings) }
 }
 
@@ -94,6 +124,21 @@ function Update-NetworkDiagDependentControls {
     $ispEnabled = -not [bool]$controls.SkipIspEvidencePacket.IsChecked
     if (-not $ispEnabled) { $controls.IspEvidenceZip.IsChecked = $false }
     $controls.IspEvidenceZip.IsEnabled = $ispEnabled
+
+    $udpEnabled = [bool]$controls.EnableUdpProbe.IsChecked
+    foreach ($name in @("UdpProbeTarget","UdpProbeRateHz","UdpProbePayloadBytes")) {
+        $controls[$name].IsEnabled = $udpEnabled
+    }
+
+    $tcpSessEnabled = [bool]$controls.EnableLongLivedTcp.IsChecked
+    foreach ($name in @("LongLivedTcpTarget","LongLivedTcpReconnectBackoffSeconds")) {
+        $controls[$name].IsEnabled = $tcpSessEnabled
+    }
+
+    $captureEnabled = [bool]$controls.AutoCaptureOnFault.IsChecked
+    foreach ($name in @("AutoCaptureMethod","AutoCaptureSeconds","AutoCaptureMax")) {
+        $controls[$name].IsEnabled = $captureEnabled
+    }
 }
 
 function Invoke-NetworkDiagGuiValidation {
@@ -104,7 +149,7 @@ function Invoke-NetworkDiagGuiValidation {
     } catch {
         $script:App.Run.ValidationHasErrors = $true
         $controls.ValidationText.Foreground = "DarkRed"
-        $controls.ValidationText.Text = "Validation: $($_.Exception.Message)"
+        $controls.ValidationText.Text = "Error: $($_.Exception.Message)"
         Update-NetworkDiagGuiActionButtons
         return
     }
@@ -113,15 +158,15 @@ function Invoke-NetworkDiagGuiValidation {
     if ($validation.Errors.Count -gt 0) {
         $script:App.Run.ValidationHasErrors = $true
         $controls.ValidationText.Foreground = "DarkRed"
-        $controls.ValidationText.Text = "Validation errors: " + ($validation.Errors -join " | ")
+        $controls.ValidationText.Text = "Error: " + ($validation.Errors -join " | ")
     } elseif ($validation.Warnings.Count -gt 0) {
         $script:App.Run.ValidationHasErrors = $false
         $controls.ValidationText.Foreground = "DarkGoldenrod"
-        $controls.ValidationText.Text = "Validation warnings: " + ($validation.Warnings -join " | ")
+        $controls.ValidationText.Text = "Warning: " + ($validation.Warnings -join " | ")
     } else {
         $script:App.Run.ValidationHasErrors = $false
         $controls.ValidationText.Foreground = "DarkOliveGreen"
-        $controls.ValidationText.Text = "Validation: ready to run."
+        $controls.ValidationText.Text = "Success: validation ready to run."
     }
     Update-NetworkDiagGuiActionButtons
 }

@@ -1,5 +1,8 @@
 # NetworkBeagle
 
+[![CI](https://github.com/Beagle0913/NetworkBeagle/actions/workflows/ci.yml/badge.svg)](https://github.com/Beagle0913/NetworkBeagle/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Windows-focused network stability diagnostics with:
 
 - a full PowerShell CLI runner (`network-stability-test.ps1`),
@@ -9,6 +12,15 @@ Windows-focused network stability diagnostics with:
 - optional ISP-ready evidence output.
 
 This project is designed for long-running, layered diagnostics where short ping tests are not enough to explain intermittent failures.
+
+## Publishing and project health
+
+- License: `MIT` (see `LICENSE`)
+- Security policy: `SECURITY.md`
+- Contributing guide: `CONTRIBUTING.md`
+- Support policy: `SUPPORT.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Change history: `CHANGELOG.md`
 
 ## What the tool does
 
@@ -68,7 +80,16 @@ On non-OK cycles, additional modules can run:
 - live log stream and health dashboard,
 - post-run quick analysis and incident timeline parsing.
 
-Quick start:
+### Easy run (one-click GUI)
+
+- Double-click `Start-NetworkBeagle-GUI.cmd`
+- Or run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\Start-NetworkBeagle-GUI.ps1"
+```
+
+### Advanced run (PowerShell)
 
 ```powershell
 Set-Location "<path-to-your-cloned-repo>"
@@ -160,6 +181,8 @@ GUI launcher runs create an additional wrapper folder:
 
 ```text
 NetworkTest/
+  Start-NetworkBeagle-GUI.cmd         # One-click launcher for non-terminal users
+  Start-NetworkBeagle-GUI.ps1         # GUI preflight launcher
   network-stability-test.ps1          # CLI entrypoint
   network-stability-test-gui.ps1      # GUI entrypoint
   lib/                                # Probe, routing, audit, reporting modules
